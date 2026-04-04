@@ -9,9 +9,10 @@ public class HomeTask {
     private final String category;
     private final String description;
     private final String deadline;
+    private final long publisherId;
     private final String publisher;
 
-    public HomeTask(long id, String title, double amount, String publishTime, String category, String description, String deadline, String publisher) {
+    public HomeTask(long id, String title, double amount, String publishTime, String category, String description, String deadline, long publisherId, String publisher) {
         this.id = id;
         this.title = title;
         this.amount = amount;
@@ -19,6 +20,7 @@ public class HomeTask {
         this.category = category;
         this.description = description;
         this.deadline = deadline;
+        this.publisherId = publisherId;
         this.publisher = publisher;
     }
 
@@ -48,6 +50,10 @@ public class HomeTask {
 
     public String getDeadline() {
         return deadline;
+    }
+
+    public long getPublisherId() {
+        return publisherId;
     }
 
     public String getPublisher() {

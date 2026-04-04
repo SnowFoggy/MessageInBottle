@@ -14,10 +14,15 @@ import com.example.messageinbottle.repository.UserRepository;
 import com.example.messageinbottle.repository.WalletRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
 public class TaskService {
+
+    private static final DateTimeFormatter DEADLINE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
@@ -34,6 +39,7 @@ public class TaskService {
     }
 
     public List<HomeTaskResponse> getHomeTasks() {
+        processExpiredAcceptedTasks();
         return taskRepository.findByStatusOrderByCreatedAtDesc("OPEN")
                 .stream()
                 .map(this::toHomeTaskResponse)
@@ -43,6 +49,18 @@ public class TaskService {
     public HomeTaskResponse publishTask(PublishTaskRequest request) {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        Wallet wallet = walletRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("钱包不存在"));
+
+        validatePublishAmount(request.getAmount());
+        if (wallet.getBalance() < request.getAmount()) {
+            throw new IllegalArgumentException("钱包余额不足，无法支付该任务金额");
+        }
+
+        long now = System.currentTimeMillis();
+        wallet.setBalance(wallet.getBalance() - request.getAmount());
+        wallet.setUpdatedAt(now);
+        walletRepository.save(wallet);
 
         Task task = new Task();
         task.setTitle(request.getTitle());
@@ -56,12 +74,13 @@ public class TaskService {
         task.setStatus("OPEN");
         task.setReviewStatus("进行中");
         task.setCompleted(false);
-        task.setCreatedAt(System.currentTimeMillis());
+        task.setCreatedAt(now);
         task = taskRepository.save(task);
         return toHomeTaskResponse(task);
     }
 
     public AcceptedTaskResponse acceptTask(Long taskId, Long userId) {
+        processExpiredAcceptedTasks();
         userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("用户不存在"));
 
         Task task = taskRepository.findById(taskId)
@@ -69,6 +88,13 @@ public class TaskService {
 
         if (!"OPEN".equals(task.getStatus())) {
             throw new IllegalArgumentException("该任务已被接取");
+        }
+        if (isTaskExpired(task)) {
+            refundPublisher(task);
+            task.setStatus("CANCELLED");
+            task.setReviewStatus("已超时关闭");
+            taskRepository.save(task);
+            throw new IllegalArgumentException("任务已超时，无法接取");
         }
 
         task.setStatus("ACCEPTED");
@@ -80,11 +106,23 @@ public class TaskService {
     }
 
     public AcceptedTaskResponse completeAcceptedTask(Long taskId, Long userId) {
+        processExpiredAcceptedTasks();
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("任务不存在"));
 
         if (!userId.equals(task.getAccepterId())) {
             throw new IllegalArgumentException("只能操作自己接取的任务");
+        }
+        if (!"ACCEPTED".equals(task.getStatus())) {
+            throw new IllegalArgumentException("当前任务状态不可提交");
+        }
+        if (isTaskExpired(task)) {
+            refundPublisher(task);
+            task.setStatus("CANCELLED");
+            task.setReviewStatus("已超时关闭");
+            task.setCompleted(false);
+            taskRepository.save(task);
+            throw new IllegalArgumentException("任务已超时，金额已退回发布者");
         }
         if (Boolean.TRUE.equals(task.getCompleted())) {
             throw new IllegalArgumentException("任务已完成提交");
@@ -97,6 +135,7 @@ public class TaskService {
     }
 
     public List<AdminReviewItemResponse> getPendingReviewTasks() {
+        processExpiredAcceptedTasks();
         return taskRepository.findByReviewStatusOrderByCreatedAtDesc("待审核")
                 .stream()
                 .map(this::toAdminReviewItemResponse)
@@ -105,6 +144,17 @@ public class TaskService {
 
     public AdminReviewItemResponse approveTask(Long taskId) {
         Task task = getPendingReviewTask(taskId);
+        Long accepterId = task.getAccepterId();
+        if (accepterId == null) {
+            throw new IllegalArgumentException("任务缺少接单用户");
+        }
+
+        Wallet wallet = walletRepository.findByUserId(accepterId)
+                .orElseThrow(() -> new IllegalArgumentException("接单用户钱包不存在"));
+        wallet.setBalance(wallet.getBalance() + task.getAmount());
+        wallet.setUpdatedAt(System.currentTimeMillis());
+        walletRepository.save(wallet);
+
         task.setReviewStatus("通过");
         task.setStatus("DONE");
         task = taskRepository.save(task);
@@ -113,11 +163,32 @@ public class TaskService {
 
     public AdminReviewItemResponse rejectTask(Long taskId) {
         Task task = getPendingReviewTask(taskId);
+        refundPublisher(task);
         task.setReviewStatus("驳回");
-        task.setStatus("ACCEPTED");
+        task.setStatus("CANCELLED");
         task.setCompleted(false);
         task = taskRepository.save(task);
         return toAdminReviewItemResponse(task);
+    }
+
+    public PublishedTaskResponse cancelPublishedTask(Long taskId, Long userId) {
+        processExpiredAcceptedTasks();
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在"));
+
+        if (!userId.equals(task.getPublisherId())) {
+            throw new IllegalArgumentException("只能取消自己发布的任务");
+        }
+        if (!"OPEN".equals(task.getStatus())) {
+            throw new IllegalArgumentException("当前任务不可取消");
+        }
+
+        refundPublisher(task);
+        task.setStatus("CANCELLED");
+        task.setReviewStatus("已取消");
+        task.setCompleted(false);
+        task = taskRepository.save(task);
+        return toPublishedTaskResponse(task);
     }
 
     public WalletResponse getWallet(Long userId) {
@@ -127,6 +198,7 @@ public class TaskService {
     }
 
     public List<PublishedTaskResponse> getPublishedTasks(Long userId) {
+        processExpiredAcceptedTasks();
         return taskRepository.findByPublisherIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::toPublishedTaskResponse)
@@ -134,6 +206,7 @@ public class TaskService {
     }
 
     public List<PublishedTaskResponse> getCompletedTasks(Long userId) {
+        processExpiredAcceptedTasks();
         return taskRepository.findByPublisherIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .filter(task -> "DONE".equals(task.getStatus()))
@@ -142,10 +215,48 @@ public class TaskService {
     }
 
     public List<AcceptedTaskResponse> getAcceptedTasks(Long userId) {
+        processExpiredAcceptedTasks();
         return taskRepository.findByAccepterIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::toAcceptedTaskResponse)
                 .toList();
+    }
+
+    private void validatePublishAmount(Double amount) {
+        if (amount == null || amount <= 0) {
+            throw new IllegalArgumentException("任务金额必须大于0");
+        }
+    }
+
+    private void processExpiredAcceptedTasks() {
+        long now = System.currentTimeMillis();
+        List<Task> acceptedTasks = taskRepository.findByStatusOrderByCreatedAtDesc("ACCEPTED");
+        for (Task task : acceptedTasks) {
+            if (!Boolean.TRUE.equals(task.getCompleted()) && parseDeadlineMillis(task.getDeadline()) < now) {
+                refundPublisher(task);
+                task.setStatus("CANCELLED");
+                task.setReviewStatus("已超时关闭");
+                task.setCompleted(false);
+                taskRepository.save(task);
+            }
+        }
+    }
+
+    private boolean isTaskExpired(Task task) {
+        return parseDeadlineMillis(task.getDeadline()) < System.currentTimeMillis();
+    }
+
+    private long parseDeadlineMillis(String deadline) {
+        LocalDateTime dateTime = LocalDateTime.parse(deadline, DEADLINE_FORMATTER);
+        return dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
+
+    private void refundPublisher(Task task) {
+        Wallet wallet = walletRepository.findByUserId(task.getPublisherId())
+                .orElseThrow(() -> new IllegalArgumentException("发布者钱包不存在"));
+        wallet.setBalance(wallet.getBalance() + task.getAmount());
+        wallet.setUpdatedAt(System.currentTimeMillis());
+        walletRepository.save(wallet);
     }
 
     private Task getPendingReviewTask(Long taskId) {
@@ -166,6 +277,7 @@ public class TaskService {
                 task.getCategory(),
                 task.getDescription(),
                 task.getDeadline(),
+                task.getPublisherId(),
                 task.getPublisherName()
         );
     }
@@ -221,6 +333,9 @@ public class TaskService {
                 return "审核驳回";
             }
             return "进行中";
+        }
+        if ("CANCELLED".equals(task.getStatus())) {
+            return task.getReviewStatus();
         }
         return "已完成";
     }

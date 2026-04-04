@@ -5,6 +5,7 @@ import android.content.Context;
 import com.example.messageinbottle.data.model.MineTaskRecord;
 import com.example.messageinbottle.data.model.PublishedTask;
 import com.example.messageinbottle.data.model.Wallet;
+import com.example.messageinbottle.data.remote.AcceptTaskRequest;
 import com.example.messageinbottle.data.remote.ApiResponse;
 import com.example.messageinbottle.data.remote.NetworkClient;
 import com.example.messageinbottle.data.remote.PublishTaskRequest;
@@ -15,6 +16,24 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public class MineRepository {
+
+    public static class ActionResult {
+        private final boolean success;
+        private final String message;
+
+        public ActionResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
 
     public MineRepository(Context context) {
     }
@@ -35,7 +54,7 @@ public class MineRepository {
     public void ensureWalletSeed(long userId) {
     }
 
-    public boolean publishTask(long userId, String title, String description, double amount, String deadline) {
+    public ActionResult publishTask(long userId, String title, String description, double amount, String deadline) {
         try {
             return request(() -> {
                 String json = NetworkClient.getInstance().post(
@@ -44,10 +63,29 @@ public class MineRepository {
                 );
                 java.lang.reflect.Type type = new TypeToken<ApiResponse<Object>>() { }.getType();
                 ApiResponse<Object> response = NetworkClient.getInstance().gson().fromJson(json, type);
-                return response != null && response.isSuccess();
+                if (response == null) {
+                    return new ActionResult(false, "发布失败");
+                }
+                return new ActionResult(response.isSuccess(), response.getMessage());
             });
         } catch (Exception ignored) {
-            return false;
+            return new ActionResult(false, "后端请求失败，请检查服务和地址配置");
+        }
+    }
+
+    public ActionResult cancelTask(long taskId, long userId) {
+        try {
+            return request(() -> {
+                String json = NetworkClient.getInstance().post("/api/tasks/" + taskId + "/cancel", new AcceptTaskRequest(userId));
+                java.lang.reflect.Type type = new TypeToken<ApiResponse<PublishedTask>>() { }.getType();
+                ApiResponse<PublishedTask> response = NetworkClient.getInstance().gson().fromJson(json, type);
+                if (response == null) {
+                    return new ActionResult(false, "取消失败");
+                }
+                return new ActionResult(response.isSuccess(), response.getMessage());
+            });
+        } catch (Exception ignored) {
+            return new ActionResult(false, "后端请求失败，请检查服务和地址配置");
         }
     }
 
@@ -79,6 +117,7 @@ public class MineRepository {
         List<MineTaskRecord> records = new ArrayList<>();
         for (PublishedTask task : tasks) {
             records.add(new MineTaskRecord(
+                    task.getId(),
                     task.getTitle(),
                     task.getDescription(),
                     task.getAmount(),

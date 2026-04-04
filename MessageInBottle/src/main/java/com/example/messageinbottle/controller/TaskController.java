@@ -55,6 +55,11 @@ public class TaskController {
         return ApiResponse.success("任务已提交", taskService.completeAcceptedTask(taskId, request.getUserId()));
     }
 
+    @PostMapping("/tasks/{taskId}/cancel")
+    public ApiResponse<PublishedTaskResponse> cancelTask(@PathVariable Long taskId, @Valid @RequestBody AcceptTaskRequest request) {
+        return ApiResponse.success("取消成功", taskService.cancelPublishedTask(taskId, request.getUserId()));
+    }
+
     @GetMapping("/wallet")
     public ApiResponse<WalletResponse> getWallet(@RequestParam Long userId) {
         return ApiResponse.success("获取成功", taskService.getWallet(userId));

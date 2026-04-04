@@ -4,6 +4,8 @@ import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -38,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String QUERY_PUBLISHED = "已发布";
     private static final String QUERY_COMPLETED = "已完成";
+    private static final long ACCEPTED_TASK_REFRESH_INTERVAL_MS = 5000L;
 
     private ActivityMainBinding binding;
     private AuthRepository authRepository;
@@ -48,6 +51,17 @@ public class MainActivity extends AppCompatActivity {
     private String selectedCategory = "全部";
     private String currentMineQuery = QUERY_PUBLISHED;
     private HomeTask currentDetailTask;
+    private MineTaskRecord currentMineDetailTask;
+    private final Handler acceptedTaskRefreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable acceptedTaskRefreshRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (sessionManager != null && sessionManager.isLoggedIn()) {
+                refreshAcceptedTasksIfVisible();
+                acceptedTaskRefreshHandler.postDelayed(this, ACCEPTED_TASK_REFRESH_INTERVAL_MS);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,6 +86,18 @@ public class MainActivity extends AppCompatActivity {
         updateAuthState();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        startAcceptedTaskAutoRefresh();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopAcceptedTaskAutoRefresh();
+    }
+
     private void initViews() {
         switchMode(true);
         selectDashboardPage(binding.navHome);
@@ -86,10 +112,17 @@ public class MainActivity extends AppCompatActivity {
         binding.btnLogout.setOnClickListener(v -> logout());
         binding.btnMineLogout.setOnClickListener(v -> logout());
         binding.navHome.setOnClickListener(v -> selectDashboardPage(binding.navHome));
-        binding.navAccepted.setOnClickListener(v -> selectDashboardPage(binding.navAccepted));
-        binding.navMine.setOnClickListener(v -> selectDashboardPage(binding.navMine));
+        binding.navAccepted.setOnClickListener(v -> {
+            selectDashboardPage(binding.navAccepted);
+            refreshAcceptedTasksIfVisible();
+        });
+        binding.navMine.setOnClickListener(v -> {
+            selectDashboardPage(binding.navMine);
+            renderWalletInfo();
+            renderMineTaskList();
+        });
         binding.btnCloseDetail.setOnClickListener(v -> hideDetail());
-        binding.btnAcceptTask.setOnClickListener(v -> acceptCurrentTask());
+        binding.btnAcceptTask.setOnClickListener(v -> onDetailPrimaryAction());
         binding.detailOverlay.setOnClickListener(v -> hideDetail());
         binding.btnOpenPublishPanel.setOnClickListener(v -> showPublishPanel());
         binding.btnConfirmPublish.setOnClickListener(v -> publishTask());
@@ -306,9 +339,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         double amount = Double.parseDouble(amountText);
-        boolean success = mineRepository.publishTask(sessionManager.getUserId(), title, description, amount, deadline);
-        if (!success) {
-            showMessage(getString(R.string.error_network));
+        MineRepository.ActionResult result = mineRepository.publishTask(sessionManager.getUserId(), title, description, amount, deadline);
+        if (!result.isSuccess()) {
+            showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.error_network) : result.getMessage());
             return;
         }
         binding.inputPublishTitle.setText(null);
@@ -319,7 +352,9 @@ public class MainActivity extends AppCompatActivity {
         currentMineQuery = QUERY_PUBLISHED;
         updateMineQueryButtons();
         renderMineTaskList();
-        showMessage(getString(R.string.publish_success));
+        renderWalletInfo();
+        filterHomeTasks();
+        showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.publish_success) : result.getMessage());
     }
 
     private String getDefaultDeadline() {
@@ -395,6 +430,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void startAcceptedTaskAutoRefresh() {
+        acceptedTaskRefreshHandler.removeCallbacks(acceptedTaskRefreshRunnable);
+        if (sessionManager != null && sessionManager.isLoggedIn()) {
+            acceptedTaskRefreshHandler.post(acceptedTaskRefreshRunnable);
+        }
+    }
+
+    private void stopAcceptedTaskAutoRefresh() {
+        acceptedTaskRefreshHandler.removeCallbacks(acceptedTaskRefreshRunnable);
+    }
+
+    private void refreshAcceptedTasksIfVisible() {
+        if (binding.pageAccepted.getVisibility() == View.VISIBLE) {
+            renderAcceptedTaskList();
+        }
+    }
+
     private void filterHomeTasks() {
         if (binding.homeTaskList == null) {
             return;
@@ -403,6 +455,7 @@ public class MainActivity extends AppCompatActivity {
         binding.homeTaskList.removeAllViews();
         String keyword = getInput(binding.inputTaskSearch.getText() == null ? null : binding.inputTaskSearch.getText().toString());
         List<HomeTask> tasks = stageTwoRepository.searchHomeTasks(keyword, selectedCategory);
+        long currentUserId = sessionManager.getUserId();
 
         if (tasks.isEmpty()) {
             TextView emptyView = new TextView(this);
@@ -417,12 +470,36 @@ public class MainActivity extends AppCompatActivity {
             emptyView.setLayoutParams(emptyParams);
             binding.homeTaskList.addView(emptyView);
         } else {
+            int visibleCount = 0;
             for (HomeTask task : tasks) {
+                if (task.getPublisherId() == currentUserId) {
+                    continue;
+                }
                 binding.homeTaskList.addView(createHomeTaskCard(task));
+                visibleCount++;
+            }
+            if (visibleCount == 0) {
+                TextView emptyView = new TextView(this);
+                emptyView.setText(R.string.task_result_empty);
+                emptyView.setTextColor(getColor(R.color.dashboard_muted));
+                emptyView.setTextSize(14);
+                LinearLayout.LayoutParams emptyParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+                emptyParams.topMargin = dp(18);
+                emptyView.setLayoutParams(emptyParams);
+                binding.homeTaskList.addView(emptyView);
             }
         }
 
-        binding.tvTaskResultHint.setText(getString(R.string.task_result_count_format, tasks.size()));
+        int displayCount = 0;
+        for (HomeTask task : tasks) {
+            if (task.getPublisherId() != currentUserId) {
+                displayCount++;
+            }
+        }
+        binding.tvTaskResultHint.setText(getString(R.string.task_result_count_format, displayCount));
     }
 
     private void renderCategoryChips() {
@@ -523,17 +600,12 @@ public class MainActivity extends AppCompatActivity {
                 6
         );
 
-        LinearLayout actionRow = new LinearLayout(this);
-        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        actionParams.topMargin = dp(14);
-        actionRow.setLayoutParams(actionParams);
-        actionRow.setOrientation(LinearLayout.HORIZONTAL);
-
         MaterialButton completeButton = new MaterialButton(this);
-        LinearLayout.LayoutParams completeParams = new LinearLayout.LayoutParams(0, dp(46), 1f);
+        LinearLayout.LayoutParams completeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(46)
+        );
+        completeParams.topMargin = dp(14);
         completeButton.setLayoutParams(completeParams);
         completeButton.setText(task.isCompleted() ? R.string.accepted_action_done : R.string.accepted_action_complete);
         completeButton.setCornerRadius(dp(14));
@@ -550,23 +622,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        MaterialButton reviewButton = new MaterialButton(this);
-        LinearLayout.LayoutParams reviewParams = new LinearLayout.LayoutParams(0, dp(46), 1f);
-        reviewParams.leftMargin = dp(10);
-        reviewButton.setLayoutParams(reviewParams);
-        reviewButton.setText(task.isCompleted() ? R.string.accepted_action_waiting : R.string.accepted_action_complete);
-        reviewButton.setCornerRadius(dp(14));
-        reviewButton.setBackgroundTintList(getColorStateList(R.color.auth_logout));
-        reviewButton.setEnabled(false);
-
-        actionRow.addView(completeButton);
-        actionRow.addView(reviewButton);
-
         container.addView(titleView);
         container.addView(metaView);
         container.addView(statusView);
         container.addView(completeView);
-        container.addView(actionRow);
+        container.addView(completeButton);
         return container;
     }
 
@@ -576,6 +636,8 @@ public class MainActivity extends AppCompatActivity {
         container.addView(createSubtitleView(record.getDescription(), 10));
         container.addView(createMutedView(getString(R.string.mine_record_meta_format, record.getAmount(), record.getDeadline()), 8));
         container.addView(createMutedView(getString(R.string.mine_record_type_format, record.getType()), 6));
+        container.addView(createActionText("点击查看任务详情", 12));
+        container.setOnClickListener(v -> showMineDetail(record));
         return container;
     }
 
@@ -667,6 +729,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showDetail(HomeTask task) {
+        currentMineDetailTask = null;
         currentDetailTask = task;
         binding.tvDetailCategory.setText(task.getCategory());
         binding.tvDetailTitle.setText(task.getTitle());
@@ -674,7 +737,32 @@ public class MainActivity extends AppCompatActivity {
         binding.tvDetailMeta.setText(getString(R.string.task_detail_meta_format, task.getPublishTime(), task.getPublisher()));
         binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, task.getDeadline()));
         binding.tvDetailDescription.setText(task.getDescription());
+        binding.btnAcceptTask.setText("接取任务");
+        binding.btnAcceptTask.setEnabled(true);
         binding.detailOverlay.setVisibility(View.VISIBLE);
+    }
+
+    private void showMineDetail(MineTaskRecord record) {
+        currentDetailTask = null;
+        currentMineDetailTask = record;
+        binding.tvDetailCategory.setText(record.getType());
+        binding.tvDetailTitle.setText(record.getTitle());
+        binding.tvDetailAmount.setText(getString(R.string.task_amount_format, record.getAmount()));
+        binding.tvDetailMeta.setText(getString(R.string.mine_record_type_format, record.getType()));
+        binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, record.getDeadline()));
+        binding.tvDetailDescription.setText(record.getDescription());
+        boolean canCancel = QUERY_PUBLISHED.equals(currentMineQuery) && "已发布".equals(record.getType());
+        binding.btnAcceptTask.setText(canCancel ? "取消发布" : "不可取消");
+        binding.btnAcceptTask.setEnabled(canCancel);
+        binding.detailOverlay.setVisibility(View.VISIBLE);
+    }
+
+    private void onDetailPrimaryAction() {
+        if (currentMineDetailTask != null) {
+            cancelCurrentMineTask();
+            return;
+        }
+        acceptCurrentTask();
     }
 
     private void acceptCurrentTask() {
@@ -693,8 +781,25 @@ public class MainActivity extends AppCompatActivity {
         showMessage("接取成功");
     }
 
+    private void cancelCurrentMineTask() {
+        if (currentMineDetailTask == null) {
+            return;
+        }
+        MineRepository.ActionResult result = mineRepository.cancelTask(currentMineDetailTask.getId(), sessionManager.getUserId());
+        if (!result.isSuccess()) {
+            showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.task_action_invalid) : result.getMessage());
+            return;
+        }
+        hideDetail();
+        renderWalletInfo();
+        renderMineTaskList();
+        filterHomeTasks();
+        showMessage(TextUtils.isEmpty(result.getMessage()) ? "取消成功" : result.getMessage());
+    }
+
     private void hideDetail() {
         currentDetailTask = null;
+        currentMineDetailTask = null;
         binding.detailOverlay.setVisibility(View.GONE);
     }
 

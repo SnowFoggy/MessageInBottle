@@ -3,18 +3,19 @@ package com.example.messageinbottle.dto;
 public class HomeTaskResponse {
 
     private Long id;
-    private String title;
     private Double amount;
+    private String title;
     private String publishTime;
     private String category;
     private String description;
     private String deadline;
+    private Long publisherId;
     private String publisher;
 
     public HomeTaskResponse() {
     }
 
-    public HomeTaskResponse(Long id, String title, Double amount, String publishTime, String category, String description, String deadline, String publisher) {
+    public HomeTaskResponse(Long id, String title, Double amount, String publishTime, String category, String description, String deadline, Long publisherId, String publisher) {
         this.id = id;
         this.title = title;
         this.amount = amount;
@@ -22,6 +23,7 @@ public class HomeTaskResponse {
         this.category = category;
         this.description = description;
         this.deadline = deadline;
+        this.publisherId = publisherId;
         this.publisher = publisher;
     }
 
@@ -53,8 +55,11 @@ public class HomeTaskResponse {
         return deadline;
     }
 
+    public Long getPublisherId() {
+        return publisherId;
+    }
+
     public String getPublisher() {
         return publisher;
     }
 }
-

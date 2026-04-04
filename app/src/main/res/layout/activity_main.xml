@@ -479,20 +479,7 @@
                     android:orientation="vertical"
                     android:visibility="gone">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="已接取任务"
-                        android:textColor="@color/dashboard_title"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="这里展示你已接取的任务，可执行“完成任务”和“模拟审核”。"
-                        android:textColor="@color/dashboard_subtitle" />
 
                     <LinearLayout
                         android:id="@+id/acceptedTaskList"
