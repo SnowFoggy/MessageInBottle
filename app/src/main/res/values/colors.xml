@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="auth_background">#FFF4EEE4</color>
+    <color name="auth_surface">#FFFFFBF6</color>
+    <color name="auth_stroke">#1F2A2D34</color>
+    <color name="auth_title">#FF1B1F23</color>
+    <color name="auth_subtitle">#FF6B737C</color>
+    <color name="auth_label">#FF9A5B2A</color>
+    <color name="auth_accent">#FFDD6B20</color>
+    <color name="auth_tab_selected_text">#FFFFFFFF</color>
+    <color name="auth_tab_unselected_text">#FF4D535A</color>
+    <color name="auth_success_surface">#FFE7F7ED</color>
+    <color name="auth_success_stroke">#FF9FD0B0</color>
+    <color name="auth_success_text">#FF2C7A4B</color>
+    <color name="auth_logout">#FF29404F</color>
+
+    <color name="dashboard_surface">#FFFFFCF7</color>
+    <color name="dashboard_stroke">#1E28303D</color>
+    <color name="dashboard_title">#FF1F2937</color>
+    <color name="dashboard_subtitle">#FF5B6470</color>
+    <color name="dashboard_muted">#FF8A919B</color>
+    <color name="nav_selected">#FFF0C48A</color>
+    <color name="nav_unselected">#FF3B4654</color>
+    <color name="task_amount">#FFB45309</color>
+</resources>

@@ -1,0 +1,12 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.MessageInBottle" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="colorPrimary">@color/auth_accent</item>
+        <item name="colorSecondary">@color/auth_logout</item>
+        <item name="android:windowBackground">@color/auth_background</item>
+    </style>
+
+    <style name="Theme.MessageInBottle" parent="Base.Theme.MessageInBottle" />
+</resources>

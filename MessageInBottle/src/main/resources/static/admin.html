@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务漂流瓶后台</title>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: rgba(52, 55, 63, 0.86);
+            --panel-2: rgba(17, 26, 47, 0.95);
+            --line: rgba(148, 163, 184, 0.18);
+            --text: #eff6ff;
+            --muted: #94a3b8;
+            --cyan: #22d3ee;
+            --green: #34d399;
+            --red: #fb7185;
+            --amber: #fbbf24;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(34, 211, 238, 0.22), transparent 28%),
+                radial-gradient(circle at top right, rgba(52, 211, 153, 0.18), transparent 22%),
+                linear-gradient(135deg, #030712 0%, #0b1020 45%, #111827 100%);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 28px 28px;
+            mask-image: radial-gradient(circle at center, black 45%, transparent 90%);
+        }
+
+        .page {
+            width: min(1180px, calc(100% - 32px));
+            margin: 32px auto;
+        }
+
+        .hero {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.92));
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            border-radius: 28px;
+            padding: 28px;
+            backdrop-filter: blur(16px);
+        }
+
+        .hero-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(34, 211, 238, 0.12);
+            color: var(--cyan);
+            font-size: 13px;
+            letter-spacing: 0.08em;
+        }
+
+        h1 {
+            margin: 16px 0 10px;
+            font-size: clamp(28px, 4vw, 42px);
+            line-height: 1.1;
+        }
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            max-width: 720px;
+            line-height: 1.8;
+        }
+
+        .stats {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 22px;
+        }
+
+        .stat {
+            min-width: 140px;
+            background: var(--panel-2);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 14px 16px;
+        }
+
+        .stat-label { color: var(--muted); font-size: 12px; }
+        .stat-value { font-size: 26px; margin-top: 6px; font-weight: 700; }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 18px;
+            margin-top: 18px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+        }
+
+        .login-panel {
+            padding: 22px;
+            position: sticky;
+            top: 18px;
+            height: fit-content;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        .muted {
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .field {
+            margin-top: 14px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            font-size: 13px;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: rgba(15, 23, 42, 0.9);
+            color: var(--text);
+            border-radius: 14px;
+            padding: 14px 14px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: rgba(34, 211, 238, 0.7);
+            box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        button {
+            border: none;
+            border-radius: 14px;
+            padding: 13px 16px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform .16s ease, opacity .16s ease, box-shadow .16s ease;
+        }
+
+        button:hover { transform: translateY(-1px); }
+        button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+        .primary {
+            flex: 1;
+            color: #001018;
+            background: linear-gradient(135deg, var(--cyan), #67e8f9);
+            box-shadow: 0 14px 32px rgba(34, 211, 238, 0.24);
+        }
+
+        .ghost {
+            color: var(--text);
+            background: rgba(148, 163, 184, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .list-panel {
+            padding: 22px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+
+        .badge {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid var(--line);
+            color: var(--amber);
+            background: rgba(251, 191, 36, 0.08);
+        }
+
+        .task-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .task-card {
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.76));
+            overflow: hidden;
+        }
+
+        .task-main {
+            padding: 18px;
+            display: grid;
+            grid-template-columns: 1.4fr .9fr;
+            gap: 18px;
+        }
+
+        .task-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .chip {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(34, 211, 238, 0.12);
+            color: var(--cyan);
+            font-size: 12px;
+        }
+
+        .task-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .task-desc {
+            color: #d7e3f4;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .meta-item {
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: rgba(148, 163, 184, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .meta-label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+        .meta-value { font-size: 15px; font-weight: 600; word-break: break-all; }
+
+        .task-footer {
+            padding: 16px 18px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            border-top: 1px solid var(--line);
+            background: rgba(2, 6, 23, 0.42);
+            flex-wrap: wrap;
+        }
+
+        .audit-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .approve {
+            background: linear-gradient(135deg, var(--green), #6ee7b7);
+            color: #062417;
+        }
+
+        .reject {
+            background: linear-gradient(135deg, var(--red), #fda4af);
+            color: #2f0912;
+        }
+
+        .empty {
+            text-align: center;
+            color: var(--muted);
+            padding: 56px 18px;
+            border: 1px dashed rgba(148, 163, 184, 0.24);
+            border-radius: 22px;
+        }
+
+        .message {
+            margin-top: 14px;
+            min-height: 22px;
+            color: var(--amber);
+            font-size: 14px;
+        }
+
+        .ok { color: var(--green); }
+        .err { color: var(--red); }
+
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+            .login-panel { position: static; }
+            .task-main { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <section class="hero">
+        <div class="hero-top">
+            <div>
+                <div class="eyebrow">ADMIN REVIEW CONSOLE</div>
+                <h1>任务审核控制台</h1>
+                <p class="subtitle">管理员登录后可查看所有“待审核”任务，并执行通过/驳回。审核通过代表任务正式完成；审核驳回后任务会退回到进行中，由接单人重新处理。</p>
+            </div>
+            <div class="badge" id="loginState">未登录</div>
+        </div>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">待审核任务</div>
+                <div class="stat-value" id="pendingCount">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">当前管理员</div>
+                <div class="stat-value" id="adminName">-</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="layout">
+        <aside class="panel login-panel">
+            <div class="panel-title">管理员登录</div>
+            <div class="muted">默认已接通后端管理员接口。你可以先用配置中的管理员账号登录，然后开始审核。</div>
+            <div class="field">
+                <label for="username">管理员账号</label>
+                <input id="username" value="admin" autocomplete="username">
+            </div>
+            <div class="field">
+                <label for="password">管理员密码</label>
+                <input id="password" type="password" value="123456" autocomplete="current-password">
+            </div>
+            <div class="actions">
+                <button class="primary" id="btnLogin">登录并拉取任务</button>
+                <button class="ghost" id="btnRefresh">刷新</button>
+            </div>
+            <div class="message" id="message"></div>
+        </aside>
+
+        <main class="panel list-panel">
+            <div class="toolbar">
+                <div>
+                    <div class="panel-title" style="margin-bottom: 6px;">待审核任务列表</div>
+                    <div class="muted">仅展示已经由接单用户提交完成、状态为“待审核”的任务。</div>
+                </div>
+                <div class="badge">审核通过 = 任务完成</div>
+            </div>
+            <div class="task-list" id="taskList"></div>
+        </main>
+    </section>
+</div>
+
+<script>
+    const apiBase = '/api/admin';
+    let isLoggedIn = false;
+    let adminUser = '';
+
+    const els = {
+        username: document.getElementById('username'),
+        password: document.getElementById('password'),
+        btnLogin: document.getElementById('btnLogin'),
+        btnRefresh: document.getElementById('btnRefresh'),
+        taskList: document.getElementById('taskList'),
+        message: document.getElementById('message'),
+        pendingCount: document.getElementById('pendingCount'),
+        adminName: document.getElementById('adminName'),
+        loginState: document.getElementById('loginState')
+    };
+
+    function setMessage(text, type = '') {
+        els.message.className = 'message ' + type;
+        els.message.textContent = text || '';
+    }
+
+    function setLoginState() {
+        els.loginState.textContent = isLoggedIn ? '已登录' : '未登录';
+        els.adminName.textContent = adminUser || '-';
+    }
+
+    async function request(path, options = {}) {
+        const response = await fetch(apiBase + path, {
+            headers: { 'Content-Type': 'application/json' },
+            ...options
+        });
+        return response.json();
+    }
+
+    function renderTasks(tasks) {
+        els.pendingCount.textContent = tasks.length;
+
+        if (!tasks.length) {
+            els.taskList.innerHTML = '<div class="empty">当前没有待审核任务，可以先在 Android 端完成任务提交后再回来查看。</div>';
+            return;
+        }
+
+        els.taskList.innerHTML = tasks.map(task => `
+            <article class="task-card">
+                <div class="task-main">
+                    <div>
+                        <div class="task-head">
+                            <span class="chip">${task.category}</span>
+                            <span class="chip">${task.reviewStatus}</span>
+                            <span class="chip">ID #${task.id}</span>
+                        </div>
+                        <div class="task-title">${escapeHtml(task.title)}</div>
+                        <div class="task-desc">${escapeHtml(task.description)}</div>
+                    </div>
+                    <div class="meta-grid">
+                        <div class="meta-item"><div class="meta-label">金额</div><div class="meta-value">¥ ${Number(task.amount).toFixed(2)}</div></div>
+                        <div class="meta-item"><div class="meta-label">截止时间</div><div class="meta-value">${escapeHtml(task.deadline)}</div></div>
+                        <div class="meta-item"><div class="meta-label">发布者</div><div class="meta-value">${escapeHtml(task.publisherName)} / ${task.publisherId}</div></div>
+                        <div class="meta-item"><div class="meta-label">接单人</div><div class="meta-value">${task.accepterId ?? '-'}</div></div>
+                    </div>
+                </div>
+                <div class="task-footer">
+                    <div class="muted">提交状态：${task.completed ? '已完成提交，等待管理员审核' : '未提交'}</div>
+                    <div class="audit-actions">
+                        <button class="approve" onclick="auditTask(${task.id}, 'approve')">审核通过</button>
+                        <button class="reject" onclick="auditTask(${task.id}, 'reject')">审核驳回</button>
+                    </div>
+                </div>
+            </article>
+        `).join('');
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    async function login() {
+        setMessage('正在登录...');
+        const result = await request('/login', {
+            method: 'POST',
+            body: JSON.stringify({ username: els.username.value.trim(), password: els.password.value })
+        });
+
+        if (!result.success) {
+            isLoggedIn = false;
+            adminUser = '';
+            setLoginState();
+            setMessage(result.message || '登录失败', 'err');
+            return;
+        }
+
+        isLoggedIn = true;
+        adminUser = result.data.username;
+        setLoginState();
+        setMessage('登录成功，正在拉取待审核任务...', 'ok');
+        await loadPendingTasks();
+    }
+
+    async function loadPendingTasks() {
+        if (!isLoggedIn) {
+            setMessage('请先登录管理员账号', 'err');
+            return;
+        }
+
+        const result = await request('/tasks/pending');
+        if (!result.success) {
+            setMessage(result.message || '拉取待审核任务失败', 'err');
+            return;
+        }
+
+        renderTasks(result.data || []);
+        setMessage('待审核任务已刷新', 'ok');
+    }
+
+    async function auditTask(taskId, action) {
+        if (!isLoggedIn) {
+            setMessage('请先登录管理员账号', 'err');
+            return;
+        }
+
+        const actionText = action === 'approve' ? '通过' : '驳回';
+        setMessage(`正在提交审核${actionText}...`);
+        const result = await request(`/tasks/${taskId}/${action}`, { method: 'POST' });
+
+        if (!result.success) {
+            setMessage(result.message || `审核${actionText}失败`, 'err');
+            return;
+        }
+
+        setMessage(`任务 ${taskId} 已审核${actionText}`, 'ok');
+        await loadPendingTasks();
+    }
+
+    els.btnLogin.addEventListener('click', login);
+    els.btnRefresh.addEventListener('click', loadPendingTasks);
+    setLoginState();
+    renderTasks([]);
+    window.auditTask = auditTask;
+</script>
+</body>
+</html>
+

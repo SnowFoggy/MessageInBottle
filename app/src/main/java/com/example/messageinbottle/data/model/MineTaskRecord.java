@@ -1,0 +1,39 @@
+package com.example.messageinbottle.data.model;
+
+public class MineTaskRecord {
+
+    private final String title;
+    private final String description;
+    private final double amount;
+    private final String deadline;
+    private final String type;
+
+    public MineTaskRecord(String title, String description, double amount, String deadline, String type) {
+        this.title = title;
+        this.description = description;
+        this.amount = amount;
+        this.deadline = deadline;
+        this.type = type;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public String getDeadline() {
+        return deadline;
+    }
+
+    public String getType() {
+        return type;
+    }
+}
+
