@@ -49,3 +49,4 @@ public class SessionManager {
         preferences.edit().clear().apply();
     }
 }
+

@@ -8,14 +8,17 @@ public class AcceptedTask {
     private final String deadline;
     private String reviewStatus;
     private boolean completed;
+    private String completionProofUrl;
 
-    public AcceptedTask(long id, String title, double amount, String deadline, String reviewStatus, boolean completed) {
+    public AcceptedTask(long id, String title, double amount, String deadline, String reviewStatus, boolean completed,
+                        String completionProofUrl) {
         this.id = id;
         this.title = title;
         this.amount = amount;
         this.deadline = deadline;
         this.reviewStatus = reviewStatus;
         this.completed = completed;
+        this.completionProofUrl = completionProofUrl;
     }
 
     public long getId() {
@@ -48,5 +51,13 @@ public class AcceptedTask {
 
     public void setCompleted(boolean completed) {
         this.completed = completed;
+    }
+
+    public String getCompletionProofUrl() {
+        return completionProofUrl;
+    }
+
+    public void setCompletionProofUrl(String completionProofUrl) {
+        this.completionProofUrl = completionProofUrl;
     }
 }

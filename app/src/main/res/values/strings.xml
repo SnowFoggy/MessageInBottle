@@ -42,6 +42,8 @@
     <string name="accepted_completed_yes">已完成</string>
     <string name="accepted_completed_no">进行中</string>
     <string name="task_complete_success">任务已提交，状态更新为待审核</string>
+    <string name="accepted_proof_missing">当前还未上传完成凭证图片</string>
+    <string name="accepted_proof_uploaded_format">已上传完成凭证：%1$s</string>
     <string name="task_action_invalid">当前状态下不能执行该操作</string>
     <string name="wallet_balance_format">钱包余额：¥ %1$.2f</string>
     <string name="mine_query_published">查已发布</string>

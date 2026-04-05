@@ -13,6 +13,7 @@ import com.example.messageinbottle.repository.TaskRepository;
 import com.example.messageinbottle.repository.UserRepository;
 import com.example.messageinbottle.repository.WalletRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -27,11 +28,16 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
+    private final UploadService uploadService;
 
-    public TaskService(TaskRepository taskRepository, UserRepository userRepository, WalletRepository walletRepository) {
+    public TaskService(TaskRepository taskRepository,
+                       UserRepository userRepository,
+                       WalletRepository walletRepository,
+                       UploadService uploadService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
+        this.uploadService = uploadService;
     }
 
     public List<String> getCategories() {
@@ -74,6 +80,7 @@ public class TaskService {
         task.setStatus("OPEN");
         task.setReviewStatus("进行中");
         task.setCompleted(false);
+        task.setCompletionProofUrl(null);
         task.setCreatedAt(now);
         task = taskRepository.save(task);
         return toHomeTaskResponse(task);
@@ -89,6 +96,9 @@ public class TaskService {
         if (!"OPEN".equals(task.getStatus())) {
             throw new IllegalArgumentException("该任务已被接取");
         }
+        if (userId.equals(task.getPublisherId())) {
+            throw new IllegalArgumentException("不能接取自己发布的任务");
+        }
         if (isTaskExpired(task)) {
             refundPublisher(task);
             task.setStatus("CANCELLED");
@@ -101,11 +111,12 @@ public class TaskService {
         task.setAccepterId(userId);
         task.setReviewStatus("进行中");
         task.setCompleted(false);
+        task.setCompletionProofUrl(null);
         task = taskRepository.save(task);
         return toAcceptedTaskResponse(task);
     }
 
-    public AcceptedTaskResponse completeAcceptedTask(Long taskId, Long userId) {
+    public AcceptedTaskResponse completeAcceptedTask(Long taskId, Long userId, MultipartFile proofImage) {
         processExpiredAcceptedTasks();
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("任务不存在"));
@@ -121,6 +132,7 @@ public class TaskService {
             task.setStatus("CANCELLED");
             task.setReviewStatus("已超时关闭");
             task.setCompleted(false);
+            task.setCompletionProofUrl(null);
             taskRepository.save(task);
             throw new IllegalArgumentException("任务已超时，金额已退回发布者");
         }
@@ -128,8 +140,10 @@ public class TaskService {
             throw new IllegalArgumentException("任务已完成提交");
         }
 
+        String proofUrl = uploadService.uploadTaskProof(proofImage, taskId, userId);
         task.setCompleted(true);
         task.setReviewStatus("待审核");
+        task.setCompletionProofUrl(proofUrl);
         task = taskRepository.save(task);
         return toAcceptedTaskResponse(task);
     }
@@ -187,6 +201,7 @@ public class TaskService {
         task.setStatus("CANCELLED");
         task.setReviewStatus("已取消");
         task.setCompleted(false);
+        task.setCompletionProofUrl(null);
         task = taskRepository.save(task);
         return toPublishedTaskResponse(task);
     }
@@ -237,6 +252,7 @@ public class TaskService {
                 task.setStatus("CANCELLED");
                 task.setReviewStatus("已超时关闭");
                 task.setCompleted(false);
+                task.setCompletionProofUrl(null);
                 taskRepository.save(task);
             }
         }
@@ -289,7 +305,8 @@ public class TaskService {
                 task.getAmount(),
                 task.getDeadline(),
                 task.getReviewStatus(),
-                Boolean.TRUE.equals(task.getCompleted())
+                Boolean.TRUE.equals(task.getCompleted()),
+                task.getCompletionProofUrl()
         );
     }
 
@@ -300,7 +317,8 @@ public class TaskService {
                 task.getDescription(),
                 task.getAmount(),
                 task.getDeadline(),
-                mapProgress(task)
+                mapProgress(task),
+                task.getCompletionProofUrl()
         );
     }
 
@@ -317,6 +335,7 @@ public class TaskService {
                 task.getAccepterId(),
                 task.getReviewStatus(),
                 Boolean.TRUE.equals(task.getCompleted()),
+                task.getCompletionProofUrl(),
                 task.getCreatedAt()
         );
     }

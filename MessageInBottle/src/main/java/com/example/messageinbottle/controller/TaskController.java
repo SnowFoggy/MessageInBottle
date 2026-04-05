@@ -6,9 +6,12 @@ import com.example.messageinbottle.dto.ApiResponse;
 import com.example.messageinbottle.dto.HomeTaskResponse;
 import com.example.messageinbottle.dto.PublishTaskRequest;
 import com.example.messageinbottle.dto.PublishedTaskResponse;
+import com.example.messageinbottle.dto.UploadResponse;
 import com.example.messageinbottle.dto.WalletResponse;
+import com.example.messageinbottle.service.UploadService;
 import com.example.messageinbottle.service.TaskService;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,7 +19,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -25,9 +30,11 @@ import java.util.List;
 public class TaskController {
 
     private final TaskService taskService;
+    private final UploadService uploadService;
 
-    public TaskController(TaskService taskService) {
+    public TaskController(TaskService taskService, UploadService uploadService) {
         this.taskService = taskService;
+        this.uploadService = uploadService;
     }
 
     @GetMapping("/home/tasks")
@@ -50,9 +57,19 @@ public class TaskController {
         return ApiResponse.success("接取成功", taskService.acceptTask(taskId, request.getUserId()));
     }
 
-    @PostMapping("/tasks/{taskId}/complete")
-    public ApiResponse<AcceptedTaskResponse> completeTask(@PathVariable Long taskId, @Valid @RequestBody AcceptTaskRequest request) {
-        return ApiResponse.success("任务已提交", taskService.completeAcceptedTask(taskId, request.getUserId()));
+    @PostMapping(value = "/tasks/{taskId}/complete", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<AcceptedTaskResponse> completeTask(@PathVariable Long taskId,
+                                                          @RequestParam("userId") Long userId,
+                                                          @RequestPart("proofImage") MultipartFile proofImage) {
+        return ApiResponse.success("任务已提交", taskService.completeAcceptedTask(taskId, userId, proofImage));
+    }
+
+    @PostMapping(value = "/tasks/{taskId}/proof/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<UploadResponse> uploadProofOnly(@PathVariable Long taskId,
+                                                       @RequestParam("userId") Long userId,
+                                                       @RequestPart("proofImage") MultipartFile proofImage) {
+        String fileUrl = uploadService.uploadTaskProof(proofImage, taskId, userId);
+        return ApiResponse.success("上传成功", new UploadResponse(fileUrl, "任务凭证已上传到七牛云"));
     }
 
     @PostMapping("/tasks/{taskId}/cancel")

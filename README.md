@@ -32,6 +32,11 @@ mvn spring-boot:run
 - `GET /api/mine/published?userId=1` 我的发布
 - `GET /api/mine/accepted?userId=1` 我的接取
 
+## 七牛云配置在 `src/main/resources/application.yml`
+- 公钥：`accessKey: #你的七牛云AK`
+- 私钥：`secretKey: #你的七牛云SK`
+- 存储位置：`bucket: #存储位置`
+
 ## 返回格式
 统一返回：
 

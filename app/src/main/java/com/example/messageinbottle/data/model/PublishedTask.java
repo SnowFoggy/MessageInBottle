@@ -8,14 +8,17 @@ public class PublishedTask {
     private final double amount;
     private final String deadline;
     private final String progress;
+    private final String completionProofUrl;
 
-    public PublishedTask(long id, String title, String description, double amount, String deadline, String progress) {
+    public PublishedTask(long id, String title, String description, double amount, String deadline, String progress,
+                         String completionProofUrl) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.amount = amount;
         this.deadline = deadline;
         this.progress = progress;
+        this.completionProofUrl = completionProofUrl;
     }
 
     public long getId() {
@@ -40,5 +43,9 @@ public class PublishedTask {
 
     public String getProgress() {
         return progress;
+    }
+
+    public String getCompletionProofUrl() {
+        return completionProofUrl;
     }
 }

@@ -50,6 +50,9 @@ public class Task {
     @Column(nullable = false)
     private Boolean completed;
 
+    @Column(length = 500)
+    private String completionProofUrl;
+
     @Column(nullable = false)
     private Long createdAt;
 
@@ -157,6 +160,14 @@ public class Task {
         this.completed = completed;
     }
 
+    public String getCompletionProofUrl() {
+        return completionProofUrl;
+    }
+
+    public void setCompletionProofUrl(String completionProofUrl) {
+        this.completionProofUrl = completionProofUrl;
+    }
+
     public Long getCreatedAt() {
         return createdAt;
     }
@@ -165,4 +176,3 @@ public class Task {
         this.createdAt = createdAt;
     }
 }
-

@@ -13,11 +13,12 @@ public class AdminReviewItemResponse {
     private final Long accepterId;
     private final String reviewStatus;
     private final Boolean completed;
+    private final String completionProofUrl;
     private final Long createdAt;
 
     public AdminReviewItemResponse(Long id, String title, String description, String category, Double amount, String deadline,
                                    Long publisherId, String publisherName, Long accepterId, String reviewStatus,
-                                   Boolean completed, Long createdAt) {
+                                   Boolean completed, String completionProofUrl, Long createdAt) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -29,6 +30,7 @@ public class AdminReviewItemResponse {
         this.accepterId = accepterId;
         this.reviewStatus = reviewStatus;
         this.completed = completed;
+        this.completionProofUrl = completionProofUrl;
         this.createdAt = createdAt;
     }
 
@@ -76,9 +78,11 @@ public class AdminReviewItemResponse {
         return completed;
     }
 
+    public String getCompletionProofUrl() {
+        return completionProofUrl;
+    }
+
     public Long getCreatedAt() {
         return createdAt;
     }
 }
-
-

@@ -1,15 +1,20 @@
 package com.example.messageinbottle.data.remote;
 
+import android.util.Log;
+
 import com.example.messageinbottle.BuildConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -17,6 +22,7 @@ import okhttp3.Response;
 
 public class NetworkClient {
 
+    private static final String TAG = "NetworkClient";
     private static volatile NetworkClient instance;
     private final ExecutorService executorService;
     private final OkHttpClient okHttpClient;
@@ -78,6 +84,28 @@ public class NetworkClient {
                 return "";
             }
             return response.body().string();
+        }
+    }
+
+    public String postMultipart(String path, Map<String, String> formData, String fileField, File file, String mimeType) throws IOException {
+        MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM);
+        for (Map.Entry<String, String> entry : formData.entrySet()) {
+            builder.addFormDataPart(entry.getKey(), entry.getValue());
+        }
+        builder.addFormDataPart(
+                fileField,
+                file.getName(),
+                RequestBody.create(file, MediaType.parse(mimeType))
+        );
+
+        Request request = new Request.Builder()
+                .url(BuildConfig.API_BASE_URL + path)
+                .post(builder.build())
+                .build();
+        try (Response response = okHttpClient.newCall(request).execute()) {
+            String responseBody = response.body() == null ? "" : response.body().string();
+            Log.d(TAG, "POST multipart " + path + " code=" + response.code() + " body=" + responseBody);
+            return responseBody;
         }
     }
 }

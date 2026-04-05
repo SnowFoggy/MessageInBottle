@@ -35,3 +35,4 @@ public final class DbContract {
         public static final String COLUMN_UPDATED_AT = "updated_at";
     }
 }
+

@@ -1,6 +1,7 @@
 package com.example.messageinbottle.data.repository;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.example.messageinbottle.data.model.AcceptedTask;
 import com.example.messageinbottle.data.model.HomeTask;
@@ -9,12 +10,41 @@ import com.example.messageinbottle.data.remote.ApiResponse;
 import com.example.messageinbottle.data.remote.NetworkClient;
 import com.google.gson.reflect.TypeToken;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 public class StageTwoRepository {
+
+    private static final String TAG = "StageTwoRepository";
+
+    public static class CompleteTaskResult {
+        private final boolean success;
+        private final String message;
+        private final AcceptedTask task;
+
+        public CompleteTaskResult(boolean success, String message, AcceptedTask task) {
+            this.success = success;
+            this.message = message;
+            this.task = task;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public AcceptedTask getTask() {
+            return task;
+        }
+    }
 
     public StageTwoRepository(Context context) {
     }
@@ -102,16 +132,26 @@ public class StageTwoRepository {
         }
     }
 
-    public AcceptedTask completeTask(long taskId, long userId) {
+    public CompleteTaskResult completeTask(long taskId, long userId, File proofImageFile) {
         try {
-            return request(() -> {
-                String json = NetworkClient.getInstance().post("/api/tasks/" + taskId + "/complete", new AcceptTaskRequest(userId));
-                java.lang.reflect.Type type = new TypeToken<ApiResponse<AcceptedTask>>() { }.getType();
-                ApiResponse<AcceptedTask> response = NetworkClient.getInstance().gson().fromJson(json, type);
-                return response != null && response.isSuccess() ? response.getData() : null;
-            });
-        } catch (Exception ignored) {
-            return null;
+            Map<String, String> formData = new HashMap<>();
+            formData.put("userId", String.valueOf(userId));
+            String json = NetworkClient.getInstance().postMultipart(
+                    "/api/tasks/" + taskId + "/complete",
+                    formData,
+                    "proofImage",
+                    proofImageFile,
+                    "image/jpeg"
+            );
+            java.lang.reflect.Type type = new TypeToken<ApiResponse<AcceptedTask>>() { }.getType();
+            ApiResponse<AcceptedTask> response = NetworkClient.getInstance().gson().fromJson(json, type);
+            if (response == null) {
+                return new CompleteTaskResult(false, "上传失败", null);
+            }
+            return new CompleteTaskResult(response.isSuccess(), response.getMessage(), response.getData());
+        } catch (Exception exception) {
+            Log.e(TAG, "completeTask failed", exception);
+            return new CompleteTaskResult(false, "上传失败，请检查网络或后端配置", null);
         }
     }
 

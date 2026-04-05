@@ -122,7 +122,8 @@ public class MineRepository {
                     task.getDescription(),
                     task.getAmount(),
                     task.getDeadline(),
-                    task.getProgress()
+                    task.getProgress(),
+                    task.getCompletionProofUrl()
             ));
         }
         return records;

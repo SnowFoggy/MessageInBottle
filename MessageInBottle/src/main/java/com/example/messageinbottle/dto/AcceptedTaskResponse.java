@@ -8,17 +8,20 @@ public class AcceptedTaskResponse {
     private String deadline;
     private String reviewStatus;
     private boolean completed;
+    private String completionProofUrl;
 
     public AcceptedTaskResponse() {
     }
 
-    public AcceptedTaskResponse(Long id, String title, Double amount, String deadline, String reviewStatus, boolean completed) {
+    public AcceptedTaskResponse(Long id, String title, Double amount, String deadline, String reviewStatus, boolean completed,
+                                String completionProofUrl) {
         this.id = id;
         this.title = title;
         this.amount = amount;
         this.deadline = deadline;
         this.reviewStatus = reviewStatus;
         this.completed = completed;
+        this.completionProofUrl = completionProofUrl;
     }
 
     public Long getId() {
@@ -44,5 +47,8 @@ public class AcceptedTaskResponse {
     public boolean isCompleted() {
         return completed;
     }
-}
 
+    public String getCompletionProofUrl() {
+        return completionProofUrl;
+    }
+}

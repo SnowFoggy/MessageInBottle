@@ -3,6 +3,7 @@ package com.example.messageinbottle;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,6 +17,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -29,9 +32,14 @@ import com.example.messageinbottle.data.model.Wallet;
 import com.example.messageinbottle.data.repository.AuthRepository;
 import com.example.messageinbottle.data.repository.MineRepository;
 import com.example.messageinbottle.data.repository.StageTwoRepository;
+import com.example.messageinbottle.data.remote.NetworkClient;
 import com.example.messageinbottle.databinding.ActivityMainBinding;
 import com.google.android.material.button.MaterialButton;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -41,6 +49,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String QUERY_PUBLISHED = "已发布";
     private static final String QUERY_COMPLETED = "已完成";
     private static final long ACCEPTED_TASK_REFRESH_INTERVAL_MS = 5000L;
+
+    private static final int DETAIL_MODE_HOME = 1;
+    private static final int DETAIL_MODE_MINE = 2;
+    private static final int DETAIL_MODE_ACCEPTED = 3;
 
     private ActivityMainBinding binding;
     private AuthRepository authRepository;
@@ -52,6 +64,25 @@ public class MainActivity extends AppCompatActivity {
     private String currentMineQuery = QUERY_PUBLISHED;
     private HomeTask currentDetailTask;
     private MineTaskRecord currentMineDetailTask;
+    private AcceptedTask currentAcceptedDetailTask;
+    private int currentDetailMode = DETAIL_MODE_HOME;
+    private File pendingProofImageFile;
+    private boolean isSubmittingProof;
+    private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri == null || currentAcceptedDetailTask == null) {
+                    return;
+                }
+                File tempFile = createTempImageFile(uri);
+                if (tempFile == null) {
+                    showMessage("图片读取失败，请重试");
+                    return;
+                }
+                pendingProofImageFile = tempFile;
+                submitAcceptedTaskWithProof();
+            }
+    );
     private final Handler acceptedTaskRefreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable acceptedTaskRefreshRunnable = new Runnable() {
         @Override
@@ -611,16 +642,7 @@ public class MainActivity extends AppCompatActivity {
         completeButton.setCornerRadius(dp(14));
         completeButton.setBackgroundTintList(getColorStateList(R.color.auth_accent));
         completeButton.setEnabled(!task.isCompleted());
-        completeButton.setOnClickListener(v -> {
-            AcceptedTask updated = stageTwoRepository.completeTask(task.getId(), sessionManager.getUserId());
-            if (updated == null) {
-                showMessage(getString(R.string.task_action_invalid));
-            } else {
-                renderAcceptedTaskList();
-                renderMineTaskList();
-                showMessage(getString(R.string.task_complete_success));
-            }
-        });
+        completeButton.setOnClickListener(v -> showAcceptedDetail(task));
 
         container.addView(titleView);
         container.addView(metaView);
@@ -729,6 +751,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showDetail(HomeTask task) {
+        currentDetailMode = DETAIL_MODE_HOME;
+        currentAcceptedDetailTask = null;
         currentMineDetailTask = null;
         currentDetailTask = task;
         binding.tvDetailCategory.setText(task.getCategory());
@@ -743,6 +767,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showMineDetail(MineTaskRecord record) {
+        currentDetailMode = DETAIL_MODE_MINE;
+        currentAcceptedDetailTask = null;
         currentDetailTask = null;
         currentMineDetailTask = record;
         binding.tvDetailCategory.setText(record.getType());
@@ -750,14 +776,43 @@ public class MainActivity extends AppCompatActivity {
         binding.tvDetailAmount.setText(getString(R.string.task_amount_format, record.getAmount()));
         binding.tvDetailMeta.setText(getString(R.string.mine_record_type_format, record.getType()));
         binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, record.getDeadline()));
-        binding.tvDetailDescription.setText(record.getDescription());
+        String proofText = TextUtils.isEmpty(record.getCompletionProofUrl())
+                ? record.getDescription()
+                : record.getDescription() + "\n\n完成凭证：" + record.getCompletionProofUrl();
+        binding.tvDetailDescription.setText(proofText);
         boolean canCancel = QUERY_PUBLISHED.equals(currentMineQuery) && "已发布".equals(record.getType());
         binding.btnAcceptTask.setText(canCancel ? "取消发布" : "不可取消");
         binding.btnAcceptTask.setEnabled(canCancel);
         binding.detailOverlay.setVisibility(View.VISIBLE);
     }
 
+    private void showAcceptedDetail(AcceptedTask task) {
+        currentDetailMode = DETAIL_MODE_ACCEPTED;
+        currentDetailTask = null;
+        currentMineDetailTask = null;
+        currentAcceptedDetailTask = task;
+        binding.tvDetailCategory.setText(task.getReviewStatus());
+        binding.tvDetailTitle.setText(task.getTitle());
+        binding.tvDetailAmount.setText(getString(R.string.task_amount_format, task.getAmount()));
+        binding.tvDetailMeta.setText(getString(R.string.review_status_format, task.getReviewStatus()));
+        binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, task.getDeadline()));
+        String proofText = TextUtils.isEmpty(task.getCompletionProofUrl())
+                ? getString(R.string.accepted_proof_missing)
+                : getString(R.string.accepted_proof_uploaded_format, task.getCompletionProofUrl());
+        binding.tvDetailDescription.setText(proofText);
+        binding.btnAcceptTask.setText(task.isCompleted() ? "已提交完成" : "上传图片并完成任务");
+        binding.btnAcceptTask.setEnabled(!task.isCompleted());
+        binding.detailOverlay.setVisibility(View.VISIBLE);
+    }
+
     private void onDetailPrimaryAction() {
+        if (currentDetailMode == DETAIL_MODE_ACCEPTED) {
+            if (isSubmittingProof) {
+                return;
+            }
+            pickProofImage();
+            return;
+        }
         if (currentMineDetailTask != null) {
             cancelCurrentMineTask();
             return;
@@ -797,9 +852,76 @@ public class MainActivity extends AppCompatActivity {
         showMessage(TextUtils.isEmpty(result.getMessage()) ? "取消成功" : result.getMessage());
     }
 
+    private void pickProofImage() {
+        if (currentAcceptedDetailTask == null || currentAcceptedDetailTask.isCompleted() || isSubmittingProof) {
+            return;
+        }
+        imagePickerLauncher.launch("image/*");
+    }
+
+    private void submitAcceptedTaskWithProof() {
+        if (currentAcceptedDetailTask == null || pendingProofImageFile == null || isSubmittingProof) {
+            return;
+        }
+        isSubmittingProof = true;
+        binding.btnAcceptTask.setEnabled(false);
+        binding.btnAcceptTask.setText("正在上传...");
+
+        long taskId = currentAcceptedDetailTask.getId();
+        long userId = sessionManager.getUserId();
+        File proofFile = pendingProofImageFile;
+
+        NetworkClient.getInstance().executor().execute(() -> {
+            StageTwoRepository.CompleteTaskResult result = stageTwoRepository.completeTask(taskId, userId, proofFile);
+            runOnUiThread(() -> {
+                isSubmittingProof = false;
+                pendingProofImageFile = null;
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                if (result == null || !result.isSuccess() || result.getTask() == null) {
+                    binding.btnAcceptTask.setEnabled(true);
+                    binding.btnAcceptTask.setText("上传图片并完成任务");
+                    String message = result == null ? null : result.getMessage();
+                    showMessage(TextUtils.isEmpty(message) ? getString(R.string.task_action_invalid) : message);
+                    return;
+                }
+                currentAcceptedDetailTask = result.getTask();
+                showAcceptedDetail(currentAcceptedDetailTask);
+                renderAcceptedTaskList();
+                renderMineTaskList();
+                showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.task_complete_success) : result.getMessage());
+            });
+        });
+    }
+
+    private File createTempImageFile(Uri uri) {
+        try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+            if (inputStream == null) {
+                return null;
+            }
+            File outputFile = new File(getCacheDir(), "task-proof-" + System.currentTimeMillis() + ".jpg");
+            try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+                byte[] buffer = new byte[8192];
+                int length;
+                while ((length = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, length);
+                }
+                outputStream.flush();
+            }
+            return outputFile;
+        } catch (IOException exception) {
+            return null;
+        }
+    }
+
     private void hideDetail() {
         currentDetailTask = null;
         currentMineDetailTask = null;
+        currentAcceptedDetailTask = null;
+        currentDetailMode = DETAIL_MODE_HOME;
+        pendingProofImageFile = null;
+        isSubmittingProof = false;
         binding.detailOverlay.setVisibility(View.GONE);
     }
 
