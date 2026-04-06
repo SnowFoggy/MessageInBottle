@@ -5,6 +5,7 @@ public class AuthPayload {
     private long id;
     private String username;
     private String nickname;
+    private String avatarUrl;
     private long createdAt;
 
     public long getId() {
@@ -19,10 +20,11 @@ public class AuthPayload {
         return nickname;
     }
 
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
     public long getCreatedAt() {
         return createdAt;
     }
 }
-
-
-

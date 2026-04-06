@@ -8,16 +8,19 @@ import com.example.messageinbottle.entity.Wallet;
 import com.example.messageinbottle.repository.UserRepository;
 import com.example.messageinbottle.repository.WalletRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class AuthService {
 
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
+    private final UploadService uploadService;
 
-    public AuthService(UserRepository userRepository, WalletRepository walletRepository) {
+    public AuthService(UserRepository userRepository, WalletRepository walletRepository, UploadService uploadService) {
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
+        this.uploadService = uploadService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -40,14 +43,22 @@ public class AuthService {
         wallet.setUpdatedAt(now);
         walletRepository.save(wallet);
 
-        return new AuthResponse(user.getId(), user.getUsername(), user.getNickname(), user.getCreatedAt());
+        return new AuthResponse(user.getId(), user.getUsername(), user.getNickname(), user.getAvatarUrl(), user.getCreatedAt());
     }
 
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByUsernameAndPassword(request.getUsername(), request.getPassword())
                 .orElseThrow(() -> new IllegalArgumentException("用户名或密码错误"));
 
-        return new AuthResponse(user.getId(), user.getUsername(), user.getNickname(), user.getCreatedAt());
+        return new AuthResponse(user.getId(), user.getUsername(), user.getNickname(), user.getAvatarUrl(), user.getCreatedAt());
+    }
+
+    public AuthResponse uploadAvatar(Long userId, MultipartFile avatarFile) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        String avatarUrl = uploadService.uploadUserAvatar(avatarFile, userId);
+        user.setAvatarUrl(avatarUrl);
+        user = userRepository.save(user);
+        return new AuthResponse(user.getId(), user.getUsername(), user.getNickname(), user.getAvatarUrl(), user.getCreatedAt());
     }
 }
-

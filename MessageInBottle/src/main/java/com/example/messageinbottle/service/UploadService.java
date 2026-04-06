@@ -32,8 +32,18 @@ public class UploadService {
     }
 
     public String uploadTaskProof(MultipartFile file, Long taskId, Long userId) {
-        validateFile(file);
-        String key = buildObjectKey(taskId, userId, file.getOriginalFilename());
+        validateFile(file, "请上传任务完成凭证图片");
+        String key = buildTaskProofKey(taskId, userId, file.getOriginalFilename());
+        return uploadToQiniu(file, key, "任务凭证上传失败");
+    }
+
+    public String uploadUserAvatar(MultipartFile file, Long userId) {
+        validateFile(file, "请上传头像图片");
+        String key = buildAvatarKey(userId, file.getOriginalFilename());
+        return uploadToQiniu(file, key, "头像上传失败");
+    }
+
+    private String uploadToQiniu(MultipartFile file, String key, String failMessage) {
         String uploadToken = Auth.create(qiniuProperties.getAccessKey(), qiniuProperties.getSecretKey())
                 .uploadToken(qiniuProperties.getBucket());
 
@@ -41,7 +51,7 @@ public class UploadService {
             Response response = uploadManager.put(inputStream, key, uploadToken, null, null);
             if (!response.isOK()) {
                 log.warn("Qiniu upload failed: statusCode={}, body={}, reqId={}", response.statusCode, response.bodyString(), response.reqId);
-                throw new IllegalArgumentException("任务凭证上传失败");
+                throw new IllegalArgumentException(failMessage);
             }
             return buildFileUrl(key);
         } catch (QiniuException exception) {
@@ -55,16 +65,16 @@ public class UploadService {
             } catch (QiniuException ignored) {
             }
             log.error("Qiniu upload exception: code={}, reqId={}, body={}", exception.code(), reqId, responseBody, exception);
-            throw new IllegalArgumentException("任务凭证上传失败");
+            throw new IllegalArgumentException(failMessage);
         } catch (IOException exception) {
             log.error("Read upload file failed", exception);
             throw new IllegalArgumentException("读取上传文件失败");
         }
     }
 
-    private void validateFile(MultipartFile file) {
+    private void validateFile(MultipartFile file, String emptyMessage) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("请上传任务完成凭证图片");
+            throw new IllegalArgumentException(emptyMessage);
         }
         if (!StringUtils.hasText(qiniuProperties.getAccessKey())
                 || !StringUtils.hasText(qiniuProperties.getSecretKey())
@@ -73,16 +83,27 @@ public class UploadService {
         }
     }
 
-    private String buildObjectKey(Long taskId, Long userId, String originalFilename) {
-        String extension = "";
+    private String buildTaskProofKey(Long taskId, Long userId, String originalFilename) {
+        return "task-proof/" + userId + "/" + taskId + "-" + UUID.randomUUID() + extractExtension(originalFilename);
+    }
+
+    private String buildAvatarKey(Long userId, String originalFilename) {
+        return "user-avatar/" + userId + "/avatar-" + UUID.randomUUID() + extractExtension(originalFilename);
+    }
+
+    private String extractExtension(String originalFilename) {
         if (StringUtils.hasText(originalFilename) && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf('.'));
+            return originalFilename.substring(originalFilename.lastIndexOf('.'));
         }
-        return "task-proof/" + userId + "/" + taskId + "-" + UUID.randomUUID() + extension;
+        return ".jpg";
     }
 
     private String buildFileUrl(String key) {
-        return "https://" + qiniuProperties.getBucket() + ".clouddn.com/" + key;
+        String domain = qiniuProperties.getDomain();
+        if (!StringUtils.hasText(domain)) {
+            return "https://" + qiniuProperties.getBucket() + ".clouddn.com/" + key;
+        }
+        String normalizedDomain = domain.endsWith("/") ? domain.substring(0, domain.length() - 1) : domain;
+        return normalizedDomain + "/" + key;
     }
 }
-

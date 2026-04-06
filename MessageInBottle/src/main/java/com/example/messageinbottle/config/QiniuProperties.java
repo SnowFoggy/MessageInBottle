@@ -8,6 +8,7 @@ public class QiniuProperties {
     private String accessKey;
     private String secretKey;
     private String bucket;
+    private String domain;
 
     public String getAccessKey() {
         return accessKey;
@@ -31,6 +32,14 @@ public class QiniuProperties {
 
     public void setBucket(String bucket) {
         this.bucket = bucket;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 }
 

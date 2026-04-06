@@ -21,6 +21,9 @@ public class User {
     @Column(nullable = false, length = 64)
     private String nickname;
 
+    @Column(length = 512)
+    private String avatarUrl;
+
     @Column(nullable = false, length = 128)
     private String password;
 
@@ -51,6 +54,14 @@ public class User {
         this.nickname = nickname;
     }
 
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
     public String getPassword() {
         return password;
     }
@@ -67,4 +78,3 @@ public class User {
         this.createdAt = createdAt;
     }
 }
-

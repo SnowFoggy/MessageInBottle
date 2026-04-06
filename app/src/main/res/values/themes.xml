@@ -9,4 +9,9 @@
     </style>
 
     <style name="Theme.MessageInBottle" parent="Base.Theme.MessageInBottle" />
+
+    <style name="ShapeAppearanceOverlay.MessageInBottle.CircleAvatar" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>

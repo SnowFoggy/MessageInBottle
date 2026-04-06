@@ -51,4 +51,10 @@
     <string name="mine_publish_title">发布漂流瓶任务</string>
     <string name="mine_record_meta_format">金额 ¥ %1$.2f · 截止 %2$s</string>
     <string name="mine_record_type_format">状态：%1$s</string>
+    <string name="avatar_uploading">头像上传中...</string>
+    <string name="avatar_upload_success">头像上传成功</string>
+    <string name="avatar_upload_failed">头像上传失败</string>
+    <string name="avatar_feature_reserved_profile">个人信息功能预留中</string>
+    <string name="avatar_feature_reserved_privacy">设置与隐私功能预留中</string>
+    <string name="avatar_picker_failed">图片读取失败，请重试</string>
 </resources>

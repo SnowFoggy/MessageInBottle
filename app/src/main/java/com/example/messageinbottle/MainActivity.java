@@ -24,6 +24,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.bumptech.glide.Glide;
 import com.example.messageinbottle.data.local.SessionManager;
 import com.example.messageinbottle.data.model.AcceptedTask;
 import com.example.messageinbottle.data.model.HomeTask;
@@ -67,22 +68,42 @@ public class MainActivity extends AppCompatActivity {
     private AcceptedTask currentAcceptedDetailTask;
     private int currentDetailMode = DETAIL_MODE_HOME;
     private File pendingProofImageFile;
+    private File pendingAvatarImageFile;
     private boolean isSubmittingProof;
+    private boolean isUploadingAvatar;
+
     private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
                 if (uri == null || currentAcceptedDetailTask == null) {
                     return;
                 }
-                File tempFile = createTempImageFile(uri);
+                File tempFile = createTempImageFile(uri, "task-proof");
                 if (tempFile == null) {
-                    showMessage("图片读取失败，请重试");
+                    showMessage(getString(R.string.avatar_picker_failed));
                     return;
                 }
                 pendingProofImageFile = tempFile;
                 submitAcceptedTaskWithProof();
             }
     );
+
+    private final ActivityResultLauncher<String> avatarPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri == null) {
+                    return;
+                }
+                File tempFile = createTempImageFile(uri, "user-avatar");
+                if (tempFile == null) {
+                    showMessage(getString(R.string.avatar_picker_failed));
+                    return;
+                }
+                pendingAvatarImageFile = tempFile;
+                uploadAvatar();
+            }
+    );
+
     private final Handler acceptedTaskRefreshHandler = new Handler(Looper.getMainLooper());
     private final Runnable acceptedTaskRefreshRunnable = new Runnable() {
         @Override
@@ -134,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
         selectDashboardPage(binding.navHome);
         renderCategoryChips();
         updateMineQueryButtons();
+        hideSideMenu();
     }
 
     private void bindActions() {
@@ -152,6 +174,12 @@ public class MainActivity extends AppCompatActivity {
             renderWalletInfo();
             renderMineTaskList();
         });
+        binding.ivUserAvatar.setOnClickListener(v -> toggleSideMenu());
+        binding.sideMenuOverlay.setOnClickListener(v -> hideSideMenu());
+        binding.sideMenuPanel.setOnClickListener(v -> { });
+        binding.btnUploadAvatar.setOnClickListener(v -> pickAvatarImage());
+        binding.menuProfile.setOnClickListener(v -> showMessage(getString(R.string.avatar_feature_reserved_profile)));
+        binding.menuSettingsPrivacy.setOnClickListener(v -> showMessage(getString(R.string.avatar_feature_reserved_privacy)));
         binding.btnCloseDetail.setOnClickListener(v -> hideDetail());
         binding.btnAcceptTask.setOnClickListener(v -> onDetailPrimaryAction());
         binding.detailOverlay.setOnClickListener(v -> hideDetail());
@@ -301,6 +329,7 @@ public class MainActivity extends AppCompatActivity {
         binding.dashboardContainer.setVisibility(loggedIn ? View.VISIBLE : View.GONE);
         hideDetail();
         hidePublishPanel();
+        hideSideMenu();
 
         if (loggedIn) {
             String displayName = sessionManager.getDisplayName();
@@ -311,6 +340,8 @@ public class MainActivity extends AppCompatActivity {
             binding.tvDashboardGreeting.setText(getString(R.string.dashboard_greeting_format, displayName));
             binding.tvSessionBadge.setText(getString(R.string.dashboard_session_format, displayName));
             binding.tvMineSummary.setText(getString(R.string.mine_summary_format, displayName));
+            binding.tvDrawerUserName.setText(displayName);
+            renderUserAvatar();
             renderDashboardLists();
             renderWalletInfo();
             renderMineTaskList();
@@ -319,6 +350,25 @@ public class MainActivity extends AppCompatActivity {
             binding.cardSession.setVisibility(View.GONE);
             clearDashboardLists();
         }
+    }
+
+    private void renderUserAvatar() {
+        String avatarUrl = sessionManager.getAvatarUrl();
+        if (TextUtils.isEmpty(avatarUrl)) {
+            binding.ivUserAvatar.setImageResource(R.drawable.ic_avatar_placeholder);
+            binding.ivDrawerAvatar.setImageResource(R.drawable.ic_avatar_placeholder);
+            return;
+        }
+        Glide.with(this)
+                .load(avatarUrl)
+                .placeholder(R.drawable.ic_avatar_placeholder)
+                .error(R.drawable.ic_avatar_placeholder)
+                .into(binding.ivUserAvatar);
+        Glide.with(this)
+                .load(avatarUrl)
+                .placeholder(R.drawable.ic_avatar_placeholder)
+                .error(R.drawable.ic_avatar_placeholder)
+                .into(binding.ivDrawerAvatar);
     }
 
     private void renderDashboardLists() {
@@ -356,6 +406,63 @@ public class MainActivity extends AppCompatActivity {
 
     private void hidePublishPanel() {
         binding.publishOverlay.setVisibility(View.GONE);
+    }
+
+    private void showSideMenu() {
+        binding.sideMenuOverlay.setVisibility(View.VISIBLE);
+    }
+
+    private void hideSideMenu() {
+        binding.sideMenuOverlay.setVisibility(View.GONE);
+    }
+
+    private void toggleSideMenu() {
+        if (binding.sideMenuOverlay.getVisibility() == View.VISIBLE) {
+            hideSideMenu();
+        } else {
+            showSideMenu();
+        }
+    }
+
+    private void pickAvatarImage() {
+        if (isUploadingAvatar) {
+            return;
+        }
+        avatarPickerLauncher.launch("image/*");
+    }
+
+    private void uploadAvatar() {
+        if (pendingAvatarImageFile == null || isUploadingAvatar) {
+            return;
+        }
+        isUploadingAvatar = true;
+        binding.btnUploadAvatar.setEnabled(false);
+        binding.btnUploadAvatar.setText(R.string.avatar_uploading);
+
+        authRepository.uploadAvatar(sessionManager.getUserId(), pendingAvatarImageFile, new AuthRepository.AvatarUploadCallback() {
+            @Override
+            public void onSuccess(String avatarUrl, String message) {
+                runOnUiThread(() -> {
+                    isUploadingAvatar = false;
+                    pendingAvatarImageFile = null;
+                    binding.btnUploadAvatar.setEnabled(true);
+                    binding.btnUploadAvatar.setText("上传头像");
+                    renderUserAvatar();
+                    showMessage(TextUtils.isEmpty(message) ? getString(R.string.avatar_upload_success) : message);
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                runOnUiThread(() -> {
+                    isUploadingAvatar = false;
+                    pendingAvatarImageFile = null;
+                    binding.btnUploadAvatar.setEnabled(true);
+                    binding.btnUploadAvatar.setText("上传头像");
+                    showMessage(TextUtils.isEmpty(message) ? getString(R.string.avatar_upload_failed) : message);
+                });
+            }
+        });
     }
 
     private void publishTask() {
@@ -895,12 +1002,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private File createTempImageFile(Uri uri) {
+    private File createTempImageFile(Uri uri, String prefix) {
         try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
             if (inputStream == null) {
                 return null;
             }
-            File outputFile = new File(getCacheDir(), "task-proof-" + System.currentTimeMillis() + ".jpg");
+            File outputFile = new File(getCacheDir(), prefix + "-" + System.currentTimeMillis() + ".jpg");
             try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
                 byte[] buffer = new byte[8192];
                 int length;

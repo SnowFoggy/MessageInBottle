@@ -5,15 +5,17 @@ public class AuthResponse {
     private Long id;
     private String username;
     private String nickname;
+    private String avatarUrl;
     private Long createdAt;
 
     public AuthResponse() {
     }
 
-    public AuthResponse(Long id, String username, String nickname, Long createdAt) {
+    public AuthResponse(Long id, String username, String nickname, String avatarUrl, Long createdAt) {
         this.id = id;
         this.username = username;
         this.nickname = nickname;
+        this.avatarUrl = avatarUrl;
         this.createdAt = createdAt;
     }
 
@@ -41,6 +43,14 @@ public class AuthResponse {
         this.nickname = nickname;
     }
 
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
     public Long getCreatedAt() {
         return createdAt;
     }
@@ -49,4 +59,3 @@ public class AuthResponse {
         this.createdAt = createdAt;
     }
 }
-

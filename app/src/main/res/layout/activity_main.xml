@@ -282,22 +282,50 @@
                     android:orientation="vertical"
                     android:padding="24dp">
 
-                    <TextView
-                        android:id="@+id/tvDashboardGreeting"
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="晚上好，用户"
-                        android:textColor="@android:color/white"
-                        android:textSize="26sp"
-                        android:textStyle="bold" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="第三阶段：完成首页任务列表、搜索筛选和详情展示"
-                        android:textColor="#E6FFFFFF"
-                        android:textSize="14sp" />
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/ivUserAvatar"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:padding="2dp"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/ic_avatar_placeholder"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CircleAvatar"
+                            app:strokeColor="@color/avatar_ring"
+                            app:strokeWidth="2dp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="14dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvDashboardGreeting"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="晚上好，用户"
+                                android:textColor="@android:color/white"
+                                android:textSize="26sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="点击左侧头像可上传头像并打开侧边栏"
+                                android:textColor="#E6FFFFFF"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="wrap_content"
@@ -325,7 +353,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
                     android:background="@drawable/bg_dashboard_card"
-                    android:gravity="center"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal"
                     android:padding="8dp">
 
@@ -333,6 +361,7 @@
                         android:id="@+id/navHome"
                         android:layout_width="0dp"
                         android:layout_height="54dp"
+                        android:layout_marginStart="8dp"
                         android:layout_weight="1"
                         android:background="@drawable/bg_nav_selected"
                         android:gravity="center"
@@ -367,6 +396,7 @@
                         android:layout_width="0dp"
                         android:layout_height="54dp"
                         android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
                         android:layout_weight="1"
                         android:background="@drawable/bg_nav_unselected"
                         android:gravity="center"
@@ -478,8 +508,6 @@
                     android:layout_marginTop="18dp"
                     android:orientation="vertical"
                     android:visibility="gone">
-
-
 
                     <LinearLayout
                         android:id="@+id/acceptedTaskList"
@@ -626,7 +654,6 @@
                         android:orientation="vertical" />
                 </LinearLayout>
             </LinearLayout>
-
         </LinearLayout>
 
         <FrameLayout
@@ -881,6 +908,109 @@
                         app:backgroundTint="@color/auth_logout"
                         app:cornerRadius="16dp" />
                 </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/sideMenuOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#59000000"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/sideMenuPanel"
+                android:layout_width="280dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_side_menu"
+                android:clickable="true"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivDrawerAvatar"
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/ic_avatar_placeholder"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CircleAvatar"
+                        app:strokeColor="@color/avatar_ring"
+                        app:strokeWidth="2dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvDrawerUserName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="用户昵称"
+                            android:textColor="@color/dashboard_title"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvDrawerUserHint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="点击下方可上传新头像"
+                            android:textColor="@color/dashboard_subtitle"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnUploadAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="18dp"
+                    android:text="上传头像"
+                    app:backgroundTint="@color/auth_accent"
+                    app:cornerRadius="16dp" />
+
+                <TextView
+                    android:id="@+id/menuProfile"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
+                    android:background="@drawable/bg_task_pill"
+                    android:paddingStart="16dp"
+                    android:paddingTop="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="16dp"
+                    android:text="个人信息"
+                    android:textColor="@color/dashboard_title"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/menuSettingsPrivacy"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_task_pill"
+                    android:paddingStart="16dp"
+                    android:paddingTop="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="16dp"
+                    android:text="设置与隐私"
+                    android:textColor="@color/dashboard_title"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
             </LinearLayout>
         </FrameLayout>
     </FrameLayout>

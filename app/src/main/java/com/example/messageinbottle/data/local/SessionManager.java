@@ -9,6 +9,7 @@ public class SessionManager {
     private static final String KEY_USER_ID = "user_id";
     private static final String KEY_USERNAME = "username";
     private static final String KEY_NICKNAME = "nickname";
+    private static final String KEY_AVATAR_URL = "avatar_url";
 
     private final SharedPreferences preferences;
 
@@ -16,11 +17,12 @@ public class SessionManager {
         preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
-    public void saveSession(long userId, String username, String nickname) {
+    public void saveSession(long userId, String username, String nickname, String avatarUrl) {
         preferences.edit()
                 .putLong(KEY_USER_ID, userId)
                 .putString(KEY_USERNAME, username)
                 .putString(KEY_NICKNAME, nickname)
+                .putString(KEY_AVATAR_URL, avatarUrl)
                 .apply();
     }
 
@@ -40,13 +42,22 @@ public class SessionManager {
         return preferences.getString(KEY_NICKNAME, "");
     }
 
+    public String getAvatarUrl() {
+        return preferences.getString(KEY_AVATAR_URL, "");
+    }
+
     public String getDisplayName() {
         String nickname = getNickname();
         return nickname == null || nickname.isEmpty() ? getUsername() : nickname;
+    }
+
+    public void updateAvatarUrl(String avatarUrl) {
+        preferences.edit()
+                .putString(KEY_AVATAR_URL, avatarUrl)
+                .apply();
     }
 
     public void clearSession() {
         preferences.edit().clear().apply();
     }
 }
-
