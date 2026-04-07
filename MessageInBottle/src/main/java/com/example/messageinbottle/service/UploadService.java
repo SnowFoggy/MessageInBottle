@@ -101,7 +101,7 @@ public class UploadService {
     private String buildFileUrl(String key) {
         String domain = qiniuProperties.getDomain();
         if (!StringUtils.hasText(domain)) {
-            return "https://" + qiniuProperties.getBucket() + ".clouddn.com/" + key;
+            return "http://" + qiniuProperties.getBucket() + ".clouddn.com/" + key;
         }
         String normalizedDomain = domain.endsWith("/") ? domain.substring(0, domain.length() - 1) : domain;
         return normalizedDomain + "/" + key;

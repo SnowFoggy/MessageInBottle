@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/auth_background"
-    android:fillViewport="true"
     tools:context=".MainActivity">
 
-    <FrameLayout
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:paddingBottom="112dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -20,7 +25,7 @@
             android:paddingStart="20dp"
             android:paddingTop="24dp"
             android:paddingEnd="20dp"
-            android:paddingBottom="24dp">
+            android:paddingBottom="140dp">
 
             <LinearLayout
                 android:id="@+id/authContainer"
@@ -279,135 +284,33 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_dashboard_hero"
-                    android:orientation="vertical"
-                    android:padding="24dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.imageview.ShapeableImageView
-                            android:id="@+id/ivUserAvatar"
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:padding="2dp"
-                            android:scaleType="centerCrop"
-                            android:src="@drawable/ic_avatar_placeholder"
-                            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CircleAvatar"
-                            app:strokeColor="@color/avatar_ring"
-                            app:strokeWidth="2dp" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="14dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tvDashboardGreeting"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="晚上好，用户"
-                                android:textColor="@android:color/white"
-                                android:textSize="26sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text="点击左侧头像可上传头像并打开侧边栏"
-                                android:textColor="#E6FFFFFF"
-                                android:textSize="14sp" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="18dp"
-                        android:background="@drawable/bg_dashboard_chip"
-                        android:orientation="horizontal"
-                        android:paddingStart="14dp"
-                        android:paddingTop="8dp"
-                        android:paddingEnd="14dp"
-                        android:paddingBottom="8dp">
-
-                        <TextView
-                            android:id="@+id/tvSessionBadge"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="当前在线：已登录"
-                            android:textColor="@android:color/white"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:background="@drawable/bg_dashboard_card"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:padding="8dp">
+                    android:padding="18dp">
 
-                    <LinearLayout
-                        android:id="@+id/navHome"
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/ivUserAvatar"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:padding="2dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/ic_avatar_placeholder"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CircleAvatar"
+                        app:strokeColor="@color/avatar_ring"
+                        app:strokeWidth="2dp" />
+
+                    <TextView
+                        android:id="@+id/tvDashboardGreeting"
                         android:layout_width="0dp"
-                        android:layout_height="54dp"
-                        android:layout_marginStart="8dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
                         android:layout_weight="1"
-                        android:background="@drawable/bg_nav_selected"
-                        android:gravity="center"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="首页"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/navAccepted"
-                        android:layout_width="0dp"
-                        android:layout_height="54dp"
-                        android:layout_marginStart="8dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_nav_unselected"
-                        android:gravity="center"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="已接取任务"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/navMine"
-                        android:layout_width="0dp"
-                        android:layout_height="54dp"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="8dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_nav_unselected"
-                        android:gravity="center"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="我的"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                        android:text="欢迎您，用户"
+                        android:textColor="@android:color/white"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -417,45 +320,12 @@
                     android:layout_marginTop="18dp"
                     android:orientation="vertical">
 
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/dashboard_surface"
-                        app:cardCornerRadius="24dp"
-                        app:cardElevation="0dp"
-                        app:strokeColor="@color/dashboard_stroke"
-                        app:strokeWidth="1dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="20dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="首页简介"
-                                android:textColor="@color/dashboard_title"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
-                                android:text="支持任务标题、金额、发布时间展示；支持关键字搜索和按类别筛选；点击卡片可查看完整任务详情。"
-                                android:textColor="@color/dashboard_subtitle"
-                                android:textSize="14sp" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/searchLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:hint="搜索任务标题、描述或发布者"
+                        android:hint="想搜什么？"
+                        app:boxBackgroundColor="@color/search_box"
                         app:boxBackgroundMode="filled"
                         app:boxCornerRadiusBottomEnd="18dp"
                         app:boxCornerRadiusBottomStart="18dp"
@@ -508,6 +378,49 @@
                     android:layout_marginTop="18dp"
                     android:orientation="vertical"
                     android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="任务详情"
+                            android:textColor="@color/dashboard_title"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnQueryAcceptedInProgress"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_nav_selected"
+                            android:paddingStart="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingEnd="12dp"
+                            android:paddingBottom="8dp"
+                            android:text="进行中"
+                            android:textColor="@color/dashboard_title"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnQueryAcceptedCompleted"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:background="@drawable/bg_task_pill"
+                            android:paddingStart="12dp"
+                            android:paddingTop="8dp"
+                            android:paddingEnd="12dp"
+                            android:paddingBottom="8dp"
+                            android:text="已完成"
+                            android:textColor="@color/dashboard_subtitle"
+                            android:textStyle="bold" />
+                    </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/acceptedTaskList"
@@ -583,14 +496,6 @@
                                     android:textStyle="bold" />
                             </LinearLayout>
 
-                            <TextView
-                                android:id="@+id/tvMineSummary"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
-                                android:text="这里将展示钱包金额、发布任务入口和查询入口。"
-                                android:textColor="@color/dashboard_subtitle"
-                                android:textSize="14sp" />
 
                             <TextView
                                 android:id="@+id/tvWalletBalance"
@@ -610,14 +515,6 @@
                                 android:textColor="@color/dashboard_title"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="8dp"
-                                android:text="点击按钮后再填写任务详情，时间会自动补齐默认时分。"
-                                android:textColor="@color/dashboard_subtitle"
-                                android:textSize="14sp" />
 
                             <LinearLayout
                                 android:layout_width="match_parent"
@@ -655,157 +552,265 @@
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
-
-        <FrameLayout
-            android:id="@+id/detailOverlay"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#80000000"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="18dp"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:background="@drawable/bg_detail_overlay"
-                android:clickable="true"
-                android:focusable="true"
-                android:orientation="vertical"
-                android:padding="22dp">
-
-                <TextView
-                    android:id="@+id/tvDetailCategory"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_task_pill"
-                    android:paddingStart="12dp"
-                    android:paddingTop="6dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="6dp"
-                    android:text="校园"
-                    android:textColor="@color/dashboard_title"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvDetailTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="任务标题"
-                    android:textColor="@android:color/white"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvDetailAmount"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="¥ 12.50"
-                    android:textColor="#FFF6B351"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvDetailMeta"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="发布时间 · 发布者"
-                    android:textColor="#D8FFFFFF"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tvDetailDeadline"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="截止时间"
-                    android:textColor="#D8FFFFFF"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:text="任务描述"
-                    android:textColor="@android:color/white"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvDetailDescription"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="任务详情描述"
-                    android:textColor="#EDEDED"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnAcceptTask"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="22dp"
-                    android:text="接取任务"
-                    app:backgroundTint="@color/auth_logout"
-                    app:cornerRadius="16dp" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCloseDetail"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="12dp"
-                    android:text="关闭详情"
-                    app:backgroundTint="@color/auth_accent"
-                    app:cornerRadius="16dp" />
-            </LinearLayout>
         </FrameLayout>
+    </androidx.core.widget.NestedScrollView>
 
-        <FrameLayout
-            android:id="@+id/publishOverlay"
+    <LinearLayout
+        android:id="@+id/bottomNavBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_bottom_nav"
+        android:elevation="12dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="22dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/navHome"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_nav_selected"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="首页"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navAccepted"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1.35"
+            android:background="@drawable/bg_nav_unselected"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="已接取任务"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navMine"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_nav_unselected"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="我的"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/detailOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="18dp"
+        android:visibility="gone">
+
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#80000000"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_detail_overlay"
             android:clickable="true"
             android:focusable="true"
-            android:padding="18dp"
-            android:visibility="gone">
+            android:orientation="vertical"
+            android:padding="22dp">
+
+            <TextView
+                android:id="@+id/tvDetailCategory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_task_pill"
+                android:paddingStart="12dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="6dp"
+                android:text="校园"
+                android:textColor="@color/dashboard_title"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDetailTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="任务标题"
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDetailAmount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="¥ 12.50"
+                android:textColor="#FFF6B351"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDetailMeta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="发布时间 · 发布者"
+                android:textColor="#D8FFFFFF"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tvDetailDeadline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="截止时间"
+                android:textColor="#D8FFFFFF"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="任务描述"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDetailDescription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="任务详情描述"
+                android:textColor="#EDEDED"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAcceptTask"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="22dp"
+                android:text="接取任务"
+                app:backgroundTint="@color/auth_logout"
+                app:cornerRadius="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCloseDetail"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="12dp"
+                android:text="关闭详情"
+                app:backgroundTint="@color/auth_accent"
+                app:cornerRadius="16dp" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/publishOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="18dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_detail_overlay"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical"
+            android:padding="22dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="发布新任务"
+                android:textColor="@android:color/white"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="任务标题"
+                app:boxBackgroundMode="filled"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusTopStart="16dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputPublishTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="任务描述"
+                app:boxBackgroundMode="filled"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusTopStart="16dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/inputPublishDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minLines="3" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:background="@drawable/bg_detail_overlay"
-                android:clickable="true"
-                android:focusable="true"
-                android:orientation="vertical"
-                android:padding="22dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="发布新任务"
-                    android:textColor="@android:color/white"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="填写标题、描述、金额和截止时间；若只写日期，系统会自动补齐为 23:59。"
-                    android:textColor="#D8FFFFFF"
-                    android:textSize="13sp" />
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:hint="任务标题"
+                    android:layout_weight="1"
+                    android:hint="金额"
                     app:boxBackgroundMode="filled"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -813,17 +818,19 @@
                     app:boxCornerRadiusTopStart="16dp">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/inputPublishTitle"
+                        android:id="@+id/inputPublishAmount"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:inputType="numberDecimal"
                         android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:hint="任务描述"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:hint="截止时间"
                     app:boxBackgroundMode="filled"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -831,187 +838,133 @@
                     app:boxCornerRadiusTopStart="16dp">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/inputPublishDescription"
+                        android:id="@+id/inputPublishDeadline"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:minLines="3" />
+                        android:hint="2026-04-05 或 2026-04-05 23:59"
+                        android:maxLines="1" />
                 </com.google.android.material.textfield.TextInputLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:hint="金额"
-                        app:boxBackgroundMode="filled"
-                        app:boxCornerRadiusBottomEnd="16dp"
-                        app:boxCornerRadiusBottomStart="16dp"
-                        app:boxCornerRadiusTopEnd="16dp"
-                        app:boxCornerRadiusTopStart="16dp">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/inputPublishAmount"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="numberDecimal"
-                            android:maxLines="1" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_weight="1"
-                        android:hint="截止时间"
-                        app:boxBackgroundMode="filled"
-                        app:boxCornerRadiusBottomEnd="16dp"
-                        app:boxCornerRadiusBottomStart="16dp"
-                        app:boxCornerRadiusTopEnd="16dp"
-                        app:boxCornerRadiusTopStart="16dp">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/inputPublishDeadline"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="2026-04-05 或 2026-04-05 23:59"
-                            android:maxLines="1" />
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnConfirmPublish"
-                        android:layout_width="0dp"
-                        android:layout_height="50dp"
-                        android:layout_weight="1"
-                        android:text="确认发布"
-                        app:backgroundTint="@color/auth_accent"
-                        app:cornerRadius="16dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnClosePublishPanel"
-                        android:layout_width="0dp"
-                        android:layout_height="50dp"
-                        android:layout_marginStart="12dp"
-                        android:layout_weight="1"
-                        android:text="取消"
-                        app:backgroundTint="@color/auth_logout"
-                        app:cornerRadius="16dp" />
-                </LinearLayout>
             </LinearLayout>
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/sideMenuOverlay"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#59000000"
-            android:clickable="true"
-            android:focusable="true"
-            android:visibility="gone">
 
             <LinearLayout
-                android:id="@+id/sideMenuPanel"
-                android:layout_width="280dp"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_side_menu"
-                android:clickable="true"
-                android:focusable="true"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/ivDrawerAvatar"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:scaleType="centerCrop"
-                        android:src="@drawable/ic_avatar_placeholder"
-                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CircleAvatar"
-                        app:strokeColor="@color/avatar_ring"
-                        app:strokeWidth="2dp" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="14dp"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/tvDrawerUserName"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="用户昵称"
-                            android:textColor="@color/dashboard_title"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvDrawerUserHint"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:text="点击下方可上传新头像"
-                            android:textColor="@color/dashboard_subtitle"
-                            android:textSize="13sp" />
-                    </LinearLayout>
-                </LinearLayout>
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnUploadAvatar"
-                    android:layout_width="match_parent"
+                    android:id="@+id/btnConfirmPublish"
+                    android:layout_width="0dp"
                     android:layout_height="50dp"
-                    android:layout_marginTop="18dp"
-                    android:text="上传头像"
+                    android:layout_weight="1"
+                    android:text="确认发布"
                     app:backgroundTint="@color/auth_accent"
                     app:cornerRadius="16dp" />
 
-                <TextView
-                    android:id="@+id/menuProfile"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="22dp"
-                    android:background="@drawable/bg_task_pill"
-                    android:paddingStart="16dp"
-                    android:paddingTop="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingBottom="16dp"
-                    android:text="个人信息"
-                    android:textColor="@color/dashboard_title"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/menuSettingsPrivacy"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_task_pill"
-                    android:paddingStart="16dp"
-                    android:paddingTop="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingBottom="16dp"
-                    android:text="设置与隐私"
-                    android:textColor="@color/dashboard_title"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnClosePublishPanel"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:text="取消"
+                    app:backgroundTint="@color/auth_logout"
+                    app:cornerRadius="16dp" />
             </LinearLayout>
-        </FrameLayout>
+        </LinearLayout>
     </FrameLayout>
-</androidx.core.widget.NestedScrollView>
+
+    <FrameLayout
+        android:id="@+id/sideMenuOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#59000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/sideMenuPanel"
+            android:layout_width="280dp"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_side_menu"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/ivDrawerAvatar"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_avatar_placeholder"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CircleAvatar"
+                    app:strokeColor="@color/avatar_ring"
+                    app:strokeWidth="2dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvDrawerUserName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="用户昵称"
+                        android:textColor="@color/dashboard_title"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnUploadAvatar"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="18dp"
+                android:text="更改头像"
+                app:backgroundTint="@color/auth_accent"
+                app:cornerRadius="16dp" />
+
+            <TextView
+                android:id="@+id/menuProfile"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:background="@drawable/bg_task_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="16dp"
+                android:text="个人信息"
+                android:textColor="@color/dashboard_title"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/menuSettingsPrivacy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_task_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="16dp"
+                android:text="设置与隐私"
+                android:textColor="@color/dashboard_title"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

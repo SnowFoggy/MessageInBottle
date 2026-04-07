@@ -29,3 +29,4 @@ qiniu:
   accessKey: 6CP3W_Ma1qrncKRgxFlxeS-ftSiAgHq9_1wRDf61
   secretKey: SdOvGd5vflk0R9t2TB7a4vGWf8-ktnYHADT_sUZS
   bucket: gec-message
+  domain: http://td0e1qttn.hn-bkt.clouddn.com

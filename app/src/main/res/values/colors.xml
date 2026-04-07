@@ -24,7 +24,8 @@
     <color name="dashboard_muted">#FF8A919B</color>
     <color name="nav_selected">#FFF0C48A</color>
     <color name="nav_unselected">#FF3B4654</color>
-    <color name="task_amount">#FFB45309</color>
+    <color name="task_amount">#D38806</color>
+    <color name="search_box">#FFFFFFFF</color>
     <color name="avatar_ring">#FFFFE7C2</color>
     <color name="side_menu_surface">#FFF8F2E8</color>
     <color name="side_menu_stroke">#1F513622</color>

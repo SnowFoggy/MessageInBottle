@@ -20,9 +20,8 @@
     <string name="error_user_not_found">账号或密码错误</string>
     <string name="error_network">后端请求失败，请检查服务和地址配置</string>
     <string name="current_user_format">当前登录用户：%1$s</string>
-    <string name="dashboard_greeting_format">晚上好，%1$s</string>
+    <string name="dashboard_greeting_format">欢迎您，%1$s</string>
     <string name="dashboard_session_format">当前在线：%1$s</string>
-    <string name="mine_summary_format">%1$s，现在你可以查看钱包、发布任务，并切换查询已发布/已完成任务。</string>
     <string name="task_amount_format">¥ %.2f</string>
     <string name="task_meta_format">%1$s · %2$s</string>
     <string name="accepted_meta_format">金额 %1$s · 截止 %2$s</string>
