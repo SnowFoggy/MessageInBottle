@@ -49,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String QUERY_PUBLISHED = "已发布";
     private static final String QUERY_COMPLETED = "已完成";
+    private static final String QUERY_ACCEPTED_IN_PROGRESS = "进行中";
+    private static final String QUERY_ACCEPTED_COMPLETED = "已完成";
     private static final long ACCEPTED_TASK_REFRESH_INTERVAL_MS = 5000L;
 
     private static final int DETAIL_MODE_HOME = 1;
@@ -63,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isLoginMode = true;
     private String selectedCategory = "全部";
     private String currentMineQuery = QUERY_PUBLISHED;
+    private String currentAcceptedQuery = QUERY_ACCEPTED_IN_PROGRESS;
     private HomeTask currentDetailTask;
     private MineTaskRecord currentMineDetailTask;
     private AcceptedTask currentAcceptedDetailTask;
@@ -154,6 +157,7 @@ public class MainActivity extends AppCompatActivity {
         switchMode(true);
         selectDashboardPage(binding.navHome);
         renderCategoryChips();
+        updateAcceptedQueryButtons();
         updateMineQueryButtons();
         hideSideMenu();
     }
@@ -194,6 +198,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         binding.inputPublishDeadline.setKeyListener(null);
+        binding.btnQueryAcceptedInProgress.setOnClickListener(v -> {
+            currentAcceptedQuery = QUERY_ACCEPTED_IN_PROGRESS;
+            updateAcceptedQueryButtons();
+            renderAcceptedTaskList();
+        });
+        binding.btnQueryAcceptedCompleted.setOnClickListener(v -> {
+            currentAcceptedQuery = QUERY_ACCEPTED_COMPLETED;
+            updateAcceptedQueryButtons();
+            renderAcceptedTaskList();
+        });
         binding.btnQueryPublished.setOnClickListener(v -> {
             currentMineQuery = QUERY_PUBLISHED;
             updateMineQueryButtons();
@@ -327,6 +341,7 @@ public class MainActivity extends AppCompatActivity {
         boolean loggedIn = sessionManager.isLoggedIn();
         binding.authContainer.setVisibility(loggedIn ? View.GONE : View.VISIBLE);
         binding.dashboardContainer.setVisibility(loggedIn ? View.VISIBLE : View.GONE);
+        binding.bottomNavBar.setVisibility(loggedIn ? View.VISIBLE : View.GONE);
         hideDetail();
         hidePublishPanel();
         hideSideMenu();
@@ -338,8 +353,6 @@ public class MainActivity extends AppCompatActivity {
             binding.cardSession.setVisibility(View.VISIBLE);
             binding.tvSessionUser.setText(getString(R.string.current_user_format, displayName));
             binding.tvDashboardGreeting.setText(getString(R.string.dashboard_greeting_format, displayName));
-            binding.tvSessionBadge.setText(getString(R.string.dashboard_session_format, displayName));
-            binding.tvMineSummary.setText(getString(R.string.mine_summary_format, displayName));
             binding.tvDrawerUserName.setText(displayName);
             renderUserAvatar();
             renderDashboardLists();
@@ -563,8 +576,27 @@ public class MainActivity extends AppCompatActivity {
     private void renderAcceptedTaskList() {
         binding.acceptedTaskList.removeAllViews();
         List<AcceptedTask> acceptedTasks = stageTwoRepository.getAcceptedTasks(sessionManager.getUserId());
+        boolean showCompleted = QUERY_ACCEPTED_COMPLETED.equals(currentAcceptedQuery);
+        int visibleCount = 0;
         for (AcceptedTask task : acceptedTasks) {
+            if (task.isCompleted() != showCompleted) {
+                continue;
+            }
             binding.acceptedTaskList.addView(createAcceptedTaskCard(task));
+            visibleCount++;
+        }
+        if (visibleCount == 0) {
+            TextView emptyView = new TextView(this);
+            emptyView.setText(showCompleted ? "暂无已完成任务" : "暂无进行中任务");
+            emptyView.setTextColor(getColor(R.color.dashboard_muted));
+            emptyView.setTextSize(14);
+            LinearLayout.LayoutParams emptyParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            emptyParams.topMargin = dp(18);
+            emptyView.setLayoutParams(emptyParams);
+            binding.acceptedTaskList.addView(emptyView);
         }
     }
 
@@ -676,6 +708,11 @@ public class MainActivity extends AppCompatActivity {
                 updateCategoryChipStyle(chip, chip.getText().toString().equals(selectedCategory));
             }
         }
+    }
+
+    private void updateAcceptedQueryButtons() {
+        updateMineQueryButton(binding.btnQueryAcceptedInProgress, QUERY_ACCEPTED_IN_PROGRESS.equals(currentAcceptedQuery));
+        updateMineQueryButton(binding.btnQueryAcceptedCompleted, QUERY_ACCEPTED_COMPLETED.equals(currentAcceptedQuery));
     }
 
     private void updateMineQueryButtons() {
