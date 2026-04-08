@@ -1,9 +1,19 @@
 package com.example.messageinbottle;
 
+import android.Manifest;
 import android.app.DatePickerDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,13 +23,18 @@ import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -58,16 +73,28 @@ import okhttp3.WebSocketListener;
 public class MainActivity extends AppCompatActivity {
 
     private static final String QUERY_PUBLISHED = "已发布";
-    private static final String QUERY_COMPLETED = "已完成";
+    private static final String MINE_STATUS_ALL = "全部";
+    private static final String MINE_STATUS_ACCEPTED = "已接取";
+    private static final String MINE_STATUS_CANCELLED = "已取消";
+    private static final String MINE_STATUS_REJECTED = "驳回";
+    private static final String MINE_STATUS_COMPLETED = "已完成";
     private static final String QUERY_ACCEPTED_IN_PROGRESS = "进行中";
     private static final String QUERY_ACCEPTED_PENDING = "待审核";
     private static final String QUERY_ACCEPTED_COMPLETED = "已完成";
     private static final String QUERY_ACCEPTED_FAILED = "完成失败";
+    private static final String QUERY_NOTIFICATION_ALL = "全部";
+    private static final String QUERY_NOTIFICATION_READ = "已读";
+    private static final String QUERY_NOTIFICATION_UNREAD = "未读";
     private static final long ACCEPTED_TASK_REFRESH_INTERVAL_MS = 5000L;
 
     private static final int DETAIL_MODE_HOME = 1;
     private static final int DETAIL_MODE_MINE = 2;
     private static final int DETAIL_MODE_ACCEPTED = 3;
+    private static final String NOTIFICATION_PREF_NAME = "message_notification_state";
+    private static final String NOTIFICATION_READ_PREFIX = "read_ids_";
+    private static final String NOTIFICATION_DELETED_PREFIX = "deleted_ids_";
+    private static final String SYSTEM_NOTIFICATION_CHANNEL_ID = "message_updates";
+    private static final String EXTRA_OPEN_NOTIFICATION_PANEL = "extra_open_notification_panel";
 
     private ActivityMainBinding binding;
     private AuthRepository authRepository;
@@ -75,10 +102,13 @@ public class MainActivity extends AppCompatActivity {
     private StageTwoRepository stageTwoRepository;
     private MineRepository mineRepository;
     private MessageRepository messageRepository;
+    private SharedPreferences notificationPreferences;
     private boolean isLoginMode = true;
     private String selectedCategory = "全部";
     private String currentMineQuery = QUERY_PUBLISHED;
+    private String currentMineStatusFilter = MINE_STATUS_ALL;
     private String currentAcceptedQuery = QUERY_ACCEPTED_IN_PROGRESS;
+    private String currentNotificationQuery = QUERY_NOTIFICATION_ALL;
     private HomeTask currentDetailTask;
     private MineTaskRecord currentMineDetailTask;
     private AcceptedTask currentAcceptedDetailTask;
@@ -90,8 +120,18 @@ public class MainActivity extends AppCompatActivity {
     private WebSocket messageWebSocket;
     private final List<AppNotification> notifications = new ArrayList<>();
     private final Set<Long> notificationIds = new HashSet<>();
+    private final Set<Long> readNotificationIds = new HashSet<>();
+    private final Set<Long> deletedNotificationIds = new HashSet<>();
+    private final Set<Long> selectedNotificationIds = new HashSet<>();
+    private boolean isNotificationSelectionMode;
     private final List<String> lastAcceptedNotificationKeys = new ArrayList<>();
     private final List<String> lastMineNotificationKeys = new ArrayList<>();
+    private boolean hasRequestedNotificationPermission;
+
+    private final ActivityResultLauncher<String> notificationPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            granted -> hasRequestedNotificationPermission = true
+    );
 
     private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -154,10 +194,20 @@ public class MainActivity extends AppCompatActivity {
         stageTwoRepository = new StageTwoRepository(this);
         mineRepository = new MineRepository(this);
         messageRepository = new MessageRepository(this);
+        notificationPreferences = getSharedPreferences(NOTIFICATION_PREF_NAME, MODE_PRIVATE);
 
         initViews();
         bindActions();
+        createNotificationChannelIfNeeded();
         updateAuthState();
+        handleNotificationPanelIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleNotificationPanelIntent(intent);
     }
 
     @Override
@@ -178,8 +228,10 @@ public class MainActivity extends AppCompatActivity {
         switchMode(true);
         selectDashboardPage(binding.navHome);
         renderCategoryChips();
+        setMineFiltersExpanded(false, false);
         updateAcceptedQueryButtons();
         updateMineQueryButtons();
+        updateNotificationQueryButtons();
         renderNotifications();
         hideSideMenu();
         hideNotificationPanel();
@@ -210,6 +262,24 @@ public class MainActivity extends AppCompatActivity {
         binding.btnUploadAvatar.setOnClickListener(v -> pickAvatarImage());
         binding.menuProfile.setOnClickListener(v -> showMessage(getString(R.string.avatar_feature_reserved_profile)));
         binding.menuSettingsPrivacy.setOnClickListener(v -> showMessage(getString(R.string.avatar_feature_reserved_privacy)));
+        binding.btnQueryNotificationAll.setOnClickListener(v -> {
+            currentNotificationQuery = QUERY_NOTIFICATION_ALL;
+            updateNotificationQueryButtons();
+            renderNotifications();
+        });
+        binding.btnQueryNotificationRead.setOnClickListener(v -> {
+            currentNotificationQuery = QUERY_NOTIFICATION_READ;
+            updateNotificationQueryButtons();
+            renderNotifications();
+        });
+        binding.btnQueryNotificationUnread.setOnClickListener(v -> {
+            currentNotificationQuery = QUERY_NOTIFICATION_UNREAD;
+            updateNotificationQueryButtons();
+            renderNotifications();
+        });
+        binding.btnMarkAllNotificationsRead.setOnClickListener(v -> markAllNotificationsRead());
+        binding.btnDeleteSelectedNotifications.setOnClickListener(v -> deleteSelectedNotifications());
+        binding.btnCancelNotificationSelection.setOnClickListener(v -> exitNotificationSelectionMode());
         binding.btnCloseDetail.setOnClickListener(v -> hideDetail());
         binding.btnAcceptTask.setOnClickListener(v -> onDetailPrimaryAction());
         binding.btnSecondaryAction.setOnClickListener(v -> onDetailSecondaryAction());
@@ -247,11 +317,49 @@ public class MainActivity extends AppCompatActivity {
         });
         binding.btnQueryPublished.setOnClickListener(v -> {
             currentMineQuery = QUERY_PUBLISHED;
+            currentMineStatusFilter = MINE_STATUS_ALL;
+            setMineFiltersExpanded(false, false);
             updateMineQueryButtons();
             renderMineTaskList();
         });
-        binding.btnQueryCompleted.setOnClickListener(v -> {
-            currentMineQuery = QUERY_COMPLETED;
+        binding.mineFilterAllToggle.setOnClickListener(v -> {
+            if (!QUERY_PUBLISHED.equals(currentMineQuery)) {
+                return;
+            }
+            setMineFiltersExpanded(binding.mineExtraFilters.getVisibility() != View.VISIBLE, true);
+            currentMineStatusFilter = MINE_STATUS_ALL;
+            updateMineQueryButtons();
+            renderMineTaskList();
+        });
+        binding.btnMineFilterAccepted.setOnClickListener(v -> {
+            if (!QUERY_PUBLISHED.equals(currentMineQuery)) {
+                return;
+            }
+            currentMineStatusFilter = MINE_STATUS_ACCEPTED;
+            updateMineQueryButtons();
+            renderMineTaskList();
+        });
+        binding.btnMineFilterCancelled.setOnClickListener(v -> {
+            if (!QUERY_PUBLISHED.equals(currentMineQuery)) {
+                return;
+            }
+            currentMineStatusFilter = MINE_STATUS_CANCELLED;
+            updateMineQueryButtons();
+            renderMineTaskList();
+        });
+        binding.btnMineFilterRejected.setOnClickListener(v -> {
+            if (!QUERY_PUBLISHED.equals(currentMineQuery)) {
+                return;
+            }
+            currentMineStatusFilter = MINE_STATUS_REJECTED;
+            updateMineQueryButtons();
+            renderMineTaskList();
+        });
+        binding.btnMineFilterCompleted.setOnClickListener(v -> {
+            if (!QUERY_PUBLISHED.equals(currentMineQuery)) {
+                return;
+            }
+            currentMineStatusFilter = MINE_STATUS_COMPLETED;
             updateMineQueryButtons();
             renderMineTaskList();
         });
@@ -385,6 +493,7 @@ public class MainActivity extends AppCompatActivity {
         hideNotificationPanel();
 
         if (loggedIn) {
+            loadPersistedNotificationState();
             String displayName = sessionManager.getDisplayName();
             long userId = sessionManager.getUserId();
             mineRepository.ensureWalletSeed(userId);
@@ -407,6 +516,10 @@ public class MainActivity extends AppCompatActivity {
             binding.cardSession.setVisibility(View.GONE);
             notifications.clear();
             notificationIds.clear();
+            readNotificationIds.clear();
+            deletedNotificationIds.clear();
+            selectedNotificationIds.clear();
+            isNotificationSelectionMode = false;
             lastAcceptedNotificationKeys.clear();
             lastMineNotificationKeys.clear();
             disconnectMessageWebSocket();
@@ -450,13 +563,29 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderMineTaskList() {
         binding.publishedTaskList.removeAllViews();
-        List<MineTaskRecord> records = QUERY_PUBLISHED.equals(currentMineQuery)
-                ? mineRepository.getPublishedTasks(sessionManager.getUserId())
-                : mineRepository.getCompletedTasks(sessionManager.getUserId());
+        List<MineTaskRecord> records = mineRepository.getPublishedTasks(sessionManager.getUserId());
 
         syncMineTaskNotifications(records);
+        int visibleCount = 0;
         for (MineTaskRecord record : records) {
+            if (!matchesMineStatusFilter(record)) {
+                continue;
+            }
             binding.publishedTaskList.addView(createMineRecordCard(record));
+            visibleCount++;
+        }
+        if (visibleCount == 0) {
+            TextView emptyView = new TextView(this);
+            emptyView.setText(getMineEmptyText());
+            emptyView.setTextColor(getColor(R.color.dashboard_muted));
+            emptyView.setTextSize(14);
+            LinearLayout.LayoutParams emptyParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            emptyParams.topMargin = dp(18);
+            emptyView.setLayoutParams(emptyParams);
+            binding.publishedTaskList.addView(emptyView);
         }
     }
 
@@ -498,6 +627,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void hideNotificationPanel() {
+        exitNotificationSelectionMode();
         binding.notificationOverlay.setVisibility(View.GONE);
     }
 
@@ -511,19 +641,79 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderNotifications() {
         binding.notificationList.removeAllViews();
-        if (notifications.isEmpty()) {
+        List<AppNotification> visibleNotifications = getFilteredNotifications();
+        if (visibleNotifications.isEmpty()) {
             TextView emptyView = new TextView(this);
-            emptyView.setText(R.string.notification_empty);
+            emptyView.setText(getNotificationEmptyText());
             emptyView.setTextColor(getColor(R.color.notification_body));
             emptyView.setTextSize(14);
             emptyView.setPadding(0, dp(12), 0, 0);
             binding.notificationList.addView(emptyView);
         } else {
-            for (AppNotification notification : notifications) {
+            for (AppNotification notification : visibleNotifications) {
                 binding.notificationList.addView(createNotificationCard(notification));
             }
         }
+        binding.btnMarkAllNotificationsRead.setEnabled(getUnreadNotificationCount() > 0 && !isNotificationSelectionMode);
+        binding.notificationSelectionBar.setVisibility(isNotificationSelectionMode ? View.VISIBLE : View.GONE);
         updateNotificationBadge();
+    }
+
+    private void enterNotificationSelectionMode(long notificationId) {
+        isNotificationSelectionMode = true;
+        selectedNotificationIds.clear();
+        selectedNotificationIds.add(notificationId);
+        renderNotifications();
+    }
+
+    private void exitNotificationSelectionMode() {
+        if (!isNotificationSelectionMode && selectedNotificationIds.isEmpty()) {
+            return;
+        }
+        isNotificationSelectionMode = false;
+        selectedNotificationIds.clear();
+        renderNotifications();
+    }
+
+    private void toggleNotificationSelection(AppNotification notification) {
+        if (selectedNotificationIds.contains(notification.id)) {
+            selectedNotificationIds.remove(notification.id);
+        } else {
+            selectedNotificationIds.add(notification.id);
+        }
+        if (selectedNotificationIds.isEmpty()) {
+            isNotificationSelectionMode = false;
+        }
+        renderNotifications();
+    }
+
+    private void deleteSelectedNotifications() {
+        if (selectedNotificationIds.isEmpty()) {
+            return;
+        }
+        notifications.removeIf(notification -> selectedNotificationIds.contains(notification.id));
+        notificationIds.removeAll(selectedNotificationIds);
+        readNotificationIds.removeAll(selectedNotificationIds);
+        persistReadNotificationIds();
+        persistDeletedNotificationIds(selectedNotificationIds);
+        selectedNotificationIds.clear();
+        isNotificationSelectionMode = false;
+        renderNotifications();
+    }
+
+    private void markAllNotificationsRead() {
+        boolean changed = false;
+        for (AppNotification notification : notifications) {
+            if (!notification.isRead) {
+                notification.isRead = true;
+                readNotificationIds.add(notification.id);
+                changed = true;
+            }
+        }
+        if (changed) {
+            persistReadNotificationIds();
+            renderNotifications();
+        }
     }
 
     private void fetchMessages() {
@@ -536,15 +726,93 @@ public class MainActivity extends AppCompatActivity {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
+                int previousUnreadCount = getUnreadNotificationCount();
+                prunePersistedNotificationState(items);
                 notifications.clear();
                 notificationIds.clear();
                 for (MessageItem item : items) {
-                    addNotificationFromMessage(item);
+                    addNotificationFromMessage(item, false);
                 }
+                requestNotificationPermissionIfNeeded(previousUnreadCount);
                 renderNotifications();
                 connectMessageWebSocketIfNeeded();
             });
         }).start();
+    }
+
+    private void requestNotificationPermissionIfNeeded(int previousUnreadCount) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (hasRequestedNotificationPermission) {
+            return;
+        }
+        if (getUnreadNotificationCount() <= previousUnreadCount) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            hasRequestedNotificationPermission = true;
+            return;
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+    }
+
+    private void createNotificationChannelIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        NotificationChannel channel = new NotificationChannel(
+                SYSTEM_NOTIFICATION_CHANNEL_ID,
+                getString(R.string.notification_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription(getString(R.string.notification_channel_description));
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.createNotificationChannel(channel);
+        }
+    }
+
+    private void showSystemNotification(AppNotification notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra(EXTRA_OPEN_NOTIFICATION_PANEL, true);
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                (int) (notification.id % Integer.MAX_VALUE),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, SYSTEM_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(notification.title)
+                .setContentText(notification.message)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(notification.message))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setDefaults(NotificationCompat.DEFAULT_ALL);
+
+        NotificationManagerCompat.from(this).notify((int) notification.id, builder.build());
+    }
+
+    private void handleNotificationPanelIntent(Intent intent) {
+        if (intent == null || !intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATION_PANEL, false)) {
+            return;
+        }
+        if (!sessionManager.isLoggedIn()) {
+            return;
+        }
+        intent.removeExtra(EXTRA_OPEN_NOTIFICATION_PANEL);
+        selectDashboardPage(binding.navHome);
+        showNotificationPanel();
     }
 
     private void connectMessageWebSocketIfNeeded() {
@@ -566,7 +834,9 @@ public class MainActivity extends AppCompatActivity {
                     if (isFinishing() || isDestroyed()) {
                         return;
                     }
-                    addNotificationFromMessage(envelope.getMessage());
+                    int previousUnreadCount = getUnreadNotificationCount();
+                    addNotificationFromMessage(envelope.getMessage(), true);
+                    requestNotificationPermissionIfNeeded(previousUnreadCount);
                     renderNotifications();
                 });
             }
@@ -594,17 +864,100 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void addNotificationFromMessage(MessageItem item) {
-        if (item == null || notificationIds.contains(item.getId())) {
+    private void loadPersistedNotificationState() {
+        readNotificationIds.clear();
+        deletedNotificationIds.clear();
+        readNotificationIds.addAll(getPersistedIdSet(NOTIFICATION_READ_PREFIX));
+        deletedNotificationIds.addAll(getPersistedIdSet(NOTIFICATION_DELETED_PREFIX));
+    }
+
+    private void persistReadNotificationIds() {
+        putPersistedIdSet(NOTIFICATION_READ_PREFIX, readNotificationIds);
+    }
+
+    private void persistDeletedNotificationIds(Set<Long> idsToDelete) {
+        deletedNotificationIds.addAll(idsToDelete);
+        putPersistedIdSet(NOTIFICATION_DELETED_PREFIX, deletedNotificationIds);
+    }
+
+    private Set<Long> getPersistedIdSet(String keyPrefix) {
+        String rawValue = notificationPreferences.getString(keyPrefix + sessionManager.getUserId(), "");
+        Set<Long> ids = new HashSet<>();
+        if (TextUtils.isEmpty(rawValue)) {
+            return ids;
+        }
+        String[] values = rawValue.split(",");
+        for (String value : values) {
+            if (TextUtils.isEmpty(value)) {
+                continue;
+            }
+            try {
+                ids.add(Long.parseLong(value));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return ids;
+    }
+
+    private void putPersistedIdSet(String keyPrefix, Set<Long> ids) {
+        StringBuilder builder = new StringBuilder();
+        for (Long id : ids) {
+            if (id == null) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(',');
+            }
+            builder.append(id);
+        }
+        notificationPreferences.edit()
+                .putString(keyPrefix + sessionManager.getUserId(), builder.toString())
+                .apply();
+    }
+
+    private void prunePersistedNotificationState(List<MessageItem> items) {
+        Set<Long> validIds = new HashSet<>();
+        for (MessageItem item : items) {
+            if (item != null) {
+                validIds.add(item.getId());
+            }
+        }
+
+        if (readNotificationIds.retainAll(validIds)) {
+            persistReadNotificationIds();
+        }
+        if (deletedNotificationIds.retainAll(validIds)) {
+            putPersistedIdSet(NOTIFICATION_DELETED_PREFIX, deletedNotificationIds);
+        }
+    }
+
+    private void addNotificationFromMessage(MessageItem item, boolean shouldPushSystemNotification) {
+        if (item == null || notificationIds.contains(item.getId()) || isNotificationDeleted(item.getId())) {
             return;
         }
         notificationIds.add(item.getId());
         String title = TextUtils.isEmpty(item.getTitle()) ? getNotificationTitle(item.getType()) : item.getTitle();
-        notifications.add(new AppNotification(item.getId(), title, item.getContent()));
+        AppNotification notification = new AppNotification(
+                item.getId(),
+                title,
+                item.getContent(),
+                formatNotificationTime(item.getCreatedAt()),
+                readNotificationIds.contains(item.getId())
+        );
+        notifications.add(notification);
         notifications.sort((left, right) -> Long.compare(right.id, left.id));
+        if (shouldPushSystemNotification && !notification.isRead) {
+            showSystemNotification(notification);
+        }
+    }
+
+    private boolean isNotificationDeleted(long notificationId) {
+        return deletedNotificationIds.contains(notificationId);
     }
 
     private View createNotificationCard(AppNotification notification) {
+        boolean isSelected = selectedNotificationIds.contains(notification.id);
+
         LinearLayout container = new LinearLayout(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -614,34 +967,279 @@ public class MainActivity extends AppCompatActivity {
         container.setLayoutParams(params);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setPadding(dp(16), dp(16), dp(16), dp(16));
-        container.setBackgroundResource(R.drawable.bg_task_pill);
+        container.setBackgroundResource(!notification.isRead ? R.drawable.bg_nav_selected : R.drawable.bg_task_pill);
+        container.setOnClickListener(v -> {
+            if (isNotificationSelectionMode) {
+                toggleNotificationSelection(notification);
+            } else {
+                openNotificationDetail(notification);
+            }
+        });
+        container.setOnLongClickListener(v -> {
+            if (!isNotificationSelectionMode) {
+                enterNotificationSelectionMode(notification.id);
+            } else {
+                toggleNotificationSelection(notification);
+            }
+            return true;
+        });
+
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView titleView = new TextView(this);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+        );
+        titleView.setLayoutParams(titleParams);
         titleView.setText(notification.title);
         titleView.setTextColor(getColor(R.color.notification_title));
         titleView.setTextSize(15);
         titleView.setTypeface(titleView.getTypeface(), Typeface.BOLD);
+
+        titleRow.addView(titleView);
+        if (isNotificationSelectionMode) {
+            titleRow.addView(createSelectionIndicator(isSelected));
+        } else if (!notification.isRead) {
+            titleRow.addView(createUnreadIndicator());
+        }
+
+        TextView timeView = new TextView(this);
+        LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        timeParams.topMargin = dp(6);
+        timeView.setLayoutParams(timeParams);
+        timeView.setText(notification.timeText);
+        timeView.setTextColor(getColor(R.color.dashboard_muted));
+        timeView.setTextSize(12);
 
         TextView bodyView = new TextView(this);
         LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        bodyParams.topMargin = dp(6);
+        bodyParams.topMargin = dp(8);
         bodyView.setLayoutParams(bodyParams);
         bodyView.setText(notification.message);
         bodyView.setTextColor(getColor(R.color.notification_body));
         bodyView.setTextSize(13);
+        bodyView.setMaxLines(isNotificationSelectionMode ? 2 : 3);
 
-        container.addView(titleView);
+        TextView stateView = new TextView(this);
+        LinearLayout.LayoutParams stateParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        stateParams.topMargin = dp(10);
+        stateView.setLayoutParams(stateParams);
+        stateView.setText(notification.isRead ? getString(R.string.notification_filter_read) : getString(R.string.notification_filter_unread));
+        stateView.setTextColor(getColor(notification.isRead ? R.color.dashboard_subtitle : R.color.dashboard_title));
+        stateView.setTextSize(12);
+        stateView.setTypeface(stateView.getTypeface(), Typeface.BOLD);
+
+        container.addView(titleRow);
+        container.addView(timeView);
         container.addView(bodyView);
+        container.addView(stateView);
         return container;
     }
 
+    private View createSelectionIndicator(boolean selected) {
+        LinearLayout indicatorLayout = new LinearLayout(this);
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                dp(22),
+                dp(22)
+        );
+        layoutParams.leftMargin = dp(10);
+        indicatorLayout.setLayoutParams(layoutParams);
+        indicatorLayout.setGravity(Gravity.CENTER);
+
+        GradientDrawable boxDrawable = new GradientDrawable();
+        boxDrawable.setShape(GradientDrawable.RECTANGLE);
+        boxDrawable.setCornerRadius(dp(6));
+        boxDrawable.setStroke(dp(2), getColor(selected ? R.color.auth_accent : R.color.dashboard_muted));
+        boxDrawable.setColor(getColor(selected ? R.color.nav_selected : android.R.color.transparent));
+        indicatorLayout.setBackground(boxDrawable);
+
+        if (selected) {
+            TextView checkView = new TextView(this);
+            checkView.setText("✓");
+            checkView.setTextSize(14);
+            checkView.setTypeface(checkView.getTypeface(), Typeface.BOLD);
+            checkView.setTextColor(getColor(R.color.dashboard_title));
+            indicatorLayout.addView(checkView);
+        }
+        return indicatorLayout;
+    }
+
+    private View createUnreadIndicator() {
+        View dotView = new View(this);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dp(12), dp(12));
+        dotParams.leftMargin = dp(10);
+        dotView.setLayoutParams(dotParams);
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.OVAL);
+        drawable.setColor(getColor(android.R.color.holo_red_light));
+        drawable.setStroke(dp(2), getColor(android.R.color.white));
+        dotView.setBackground(drawable);
+        return dotView;
+    }
+
     private void updateNotificationBadge() {
-        int count = notifications.size();
+        int count = getUnreadNotificationCount();
         binding.tvNotificationBadge.setVisibility(count > 0 ? View.VISIBLE : View.GONE);
         binding.tvNotificationBadge.setText(String.valueOf(Math.min(count, 99)));
+    }
+
+    private List<AppNotification> getFilteredNotifications() {
+        List<AppNotification> filtered = new ArrayList<>();
+        for (AppNotification notification : notifications) {
+            if (QUERY_NOTIFICATION_READ.equals(currentNotificationQuery) && !notification.isRead) {
+                continue;
+            }
+            if (QUERY_NOTIFICATION_UNREAD.equals(currentNotificationQuery) && notification.isRead) {
+                continue;
+            }
+            filtered.add(notification);
+        }
+        return filtered;
+    }
+
+    private String getNotificationEmptyText() {
+        if (QUERY_NOTIFICATION_READ.equals(currentNotificationQuery)) {
+            return getString(R.string.notification_empty_read);
+        }
+        if (QUERY_NOTIFICATION_UNREAD.equals(currentNotificationQuery)) {
+            return getString(R.string.notification_empty_unread);
+        }
+        return getString(R.string.notification_empty);
+    }
+
+    private int getUnreadNotificationCount() {
+        int count = 0;
+        for (AppNotification notification : notifications) {
+            if (!notification.isRead) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void updateNotificationQueryButtons() {
+        updateMineQueryButton(binding.btnQueryNotificationAll, QUERY_NOTIFICATION_ALL.equals(currentNotificationQuery));
+        updateMineQueryButton(binding.btnQueryNotificationRead, QUERY_NOTIFICATION_READ.equals(currentNotificationQuery));
+        updateMineQueryButton(binding.btnQueryNotificationUnread, QUERY_NOTIFICATION_UNREAD.equals(currentNotificationQuery));
+    }
+
+    private void openNotificationDetail(AppNotification notification) {
+        if (!notification.isRead) {
+            notification.isRead = true;
+            readNotificationIds.add(notification.id);
+            persistReadNotificationIds();
+            renderNotifications();
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this).create();
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(24), dp(24), dp(24), dp(24));
+        root.setBackgroundResource(R.drawable.bg_detail_overlay);
+
+        TextView tagView = new TextView(this);
+        tagView.setText(getString(R.string.notification_detail_title));
+        tagView.setTextSize(12);
+        tagView.setTypeface(tagView.getTypeface(), Typeface.BOLD);
+        tagView.setTextColor(getColor(R.color.dashboard_title));
+        tagView.setBackgroundResource(R.drawable.bg_task_pill);
+        tagView.setPadding(dp(12), dp(6), dp(12), dp(6));
+
+        TextView titleView = new TextView(this);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        titleParams.topMargin = dp(16);
+        titleView.setLayoutParams(titleParams);
+        titleView.setText(TextUtils.isEmpty(notification.title) ? getString(R.string.notification_detail_title) : notification.title);
+        titleView.setTextSize(22);
+        titleView.setTextColor(getColor(android.R.color.white));
+        titleView.setTypeface(titleView.getTypeface(), Typeface.BOLD);
+
+        TextView timeView = new TextView(this);
+        LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        timeParams.topMargin = dp(10);
+        timeView.setLayoutParams(timeParams);
+        timeView.setText(getString(R.string.notification_detail_time_format, notification.timeText));
+        timeView.setTextSize(13);
+        timeView.setTextColor(0xD8FFFFFF);
+
+        View divider = new View(this);
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(1)
+        );
+        dividerParams.topMargin = dp(16);
+        dividerParams.bottomMargin = dp(16);
+        divider.setLayoutParams(dividerParams);
+        divider.setBackgroundColor(0x33FFFFFF);
+
+        ScrollView scrollView = new ScrollView(this);
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        scrollView.setLayoutParams(scrollParams);
+        scrollView.setFillViewport(true);
+
+        TextView messageView = new TextView(this);
+        messageView.setText(notification.message);
+        messageView.setTextSize(15);
+        messageView.setLineSpacing(dp(4), 1f);
+        messageView.setTextColor(0xFFEDEDED);
+        scrollView.addView(messageView);
+
+        MaterialButton closeButton = new MaterialButton(this);
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(52)
+        );
+        closeParams.topMargin = dp(22);
+        closeButton.setLayoutParams(closeParams);
+        closeButton.setText("我知道了");
+        closeButton.setCornerRadius(dp(16));
+        closeButton.setBackgroundTintList(getColorStateList(R.color.auth_accent));
+        closeButton.setOnClickListener(v -> dialog.dismiss());
+
+        root.addView(tagView);
+        root.addView(titleView);
+        root.addView(timeView);
+        root.addView(divider);
+        root.addView(scrollView);
+        root.addView(closeButton);
+
+        dialog.setView(root);
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
+        }
+    }
+
+    private String formatNotificationTime(long createdAt) {
+        if (createdAt <= 0L) {
+            return "--";
+        }
+        long timestamp = createdAt < 1000000000000L ? createdAt * 1000L : createdAt;
+        java.text.SimpleDateFormat formatter = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+        return formatter.format(new java.util.Date(timestamp));
     }
 
     private String getNotificationTitle(String type) {
@@ -1026,8 +1624,94 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateMineQueryButtons() {
-        updateMineQueryButton(binding.btnQueryPublished, QUERY_PUBLISHED.equals(currentMineQuery));
-        updateMineQueryButton(binding.btnQueryCompleted, QUERY_COMPLETED.equals(currentMineQuery));
+        boolean publishedSelected = QUERY_PUBLISHED.equals(currentMineQuery);
+        boolean extraFiltersVisible = binding != null
+                && binding.mineExtraFilters != null
+                && binding.mineExtraFilters.getVisibility() == View.VISIBLE;
+        updateMineQueryButton(binding.btnQueryPublished, publishedSelected);
+        updateMineFilterAllToggleStyle(publishedSelected);
+        updateMineQueryButton(binding.btnMineFilterAccepted, publishedSelected && extraFiltersVisible && MINE_STATUS_ACCEPTED.equals(currentMineStatusFilter));
+        updateMineQueryButton(binding.btnMineFilterCancelled, publishedSelected && extraFiltersVisible && MINE_STATUS_CANCELLED.equals(currentMineStatusFilter));
+        updateMineQueryButton(binding.btnMineFilterRejected, publishedSelected && extraFiltersVisible && MINE_STATUS_REJECTED.equals(currentMineStatusFilter));
+        updateMineQueryButton(binding.btnMineFilterCompleted, publishedSelected && extraFiltersVisible && MINE_STATUS_COMPLETED.equals(currentMineStatusFilter));
+    }
+
+    private void updateMineFilterAllToggleStyle(boolean selected) {
+        binding.mineFilterAllToggle.setBackgroundResource(selected ? R.drawable.bg_nav_selected : R.drawable.bg_task_pill);
+        binding.btnMineFilterAll.setTextColor(getColor(selected ? R.color.dashboard_title : R.color.dashboard_subtitle));
+        binding.ivMineFilterArrow.setColorFilter(getColor(selected ? R.color.dashboard_title : R.color.dashboard_subtitle));
+    }
+
+    private void setMineFiltersExpanded(boolean expanded, boolean animate) {
+        binding.ivMineFilterArrow.animate()
+                .rotation(expanded ? 180f : 0f)
+                .setDuration(180)
+                .start();
+
+        if (!animate) {
+            binding.mineExtraFilters.animate().cancel();
+            binding.mineExtraFilters.setVisibility(expanded ? View.VISIBLE : View.GONE);
+            binding.mineExtraFilters.setAlpha(expanded ? 1f : 0f);
+            binding.mineExtraFilters.setTranslationX(expanded ? 0f : -dp(8));
+            return;
+        }
+
+        binding.mineExtraFilters.animate().cancel();
+        if (expanded) {
+            binding.mineExtraFilters.setVisibility(View.VISIBLE);
+            binding.mineExtraFilters.setAlpha(0f);
+            binding.mineExtraFilters.setTranslationX(-dp(8));
+            binding.mineExtraFilters.animate()
+                    .alpha(1f)
+                    .translationX(0f)
+                    .setDuration(180)
+                    .start();
+        } else {
+            binding.mineExtraFilters.animate()
+                    .alpha(0f)
+                    .translationX(-dp(8))
+                    .setDuration(180)
+                    .withEndAction(() -> binding.mineExtraFilters.setVisibility(View.GONE))
+                    .start();
+        }
+    }
+
+    private boolean matchesMineStatusFilter(MineTaskRecord record) {
+        if (!QUERY_PUBLISHED.equals(currentMineQuery)) {
+            return false;
+        }
+        if (MINE_STATUS_ALL.equals(currentMineStatusFilter)) {
+            return true;
+        }
+        if (MINE_STATUS_ACCEPTED.equals(currentMineStatusFilter)) {
+            return "已接取".equals(record.getType());
+        }
+        if (MINE_STATUS_CANCELLED.equals(currentMineStatusFilter)) {
+            return "已取消".equals(record.getType()) || "已取消发布".equals(record.getType());
+        }
+        if (MINE_STATUS_REJECTED.equals(currentMineStatusFilter)) {
+            return "驳回".equals(record.getType()) || "审核驳回".equals(record.getType());
+        }
+        if (MINE_STATUS_COMPLETED.equals(currentMineStatusFilter)) {
+            return "已完成".equals(record.getType()) || "审核通过".equals(record.getType());
+        }
+        return true;
+    }
+
+    private String getMineEmptyText() {
+        if (MINE_STATUS_ACCEPTED.equals(currentMineStatusFilter)) {
+            return "暂无已接取任务";
+        }
+        if (MINE_STATUS_CANCELLED.equals(currentMineStatusFilter)) {
+            return "暂无已取消任务";
+        }
+        if (MINE_STATUS_REJECTED.equals(currentMineStatusFilter)) {
+            return "暂无驳回任务";
+        }
+        if (MINE_STATUS_COMPLETED.equals(currentMineStatusFilter)) {
+            return "暂无已完成任务";
+        }
+        return "暂无已发布任务";
     }
 
     private void updateMineQueryButton(TextView view, boolean selected) {
@@ -1110,6 +1794,9 @@ public class MainActivity extends AppCompatActivity {
         container.addView(createSubtitleView(record.getDescription(), 10));
         container.addView(createMutedView(getString(R.string.mine_record_meta_format, record.getAmount(), record.getDeadline()), 8));
         container.addView(createMutedView(getString(R.string.mine_record_type_format, record.getType()), 6));
+        if (MINE_STATUS_COMPLETED.equals(currentMineStatusFilter)) {
+            container.addView(createAccentView("可查看完成详情与图片", 10));
+        }
         container.addView(createActionText("点击查看任务详情", 12));
         container.setOnClickListener(v -> showMineDetail(record));
         return container;
@@ -1213,6 +1900,7 @@ public class MainActivity extends AppCompatActivity {
         binding.tvDetailMeta.setText(getString(R.string.task_detail_meta_format, task.getPublishTime(), task.getPublisher()));
         binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, task.getDeadline()));
         binding.tvDetailDescription.setText(task.getDescription());
+        binding.ivDetailProof.setVisibility(View.GONE);
         binding.btnAcceptTask.setText("接取任务");
         binding.btnAcceptTask.setEnabled(true);
         binding.btnSecondaryAction.setVisibility(View.GONE);
@@ -1220,6 +1908,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showMineDetail(MineTaskRecord record) {
+        boolean isCompletedRecord = MINE_STATUS_COMPLETED.equals(currentMineStatusFilter)
+                || "已完成".equals(record.getType())
+                || "审核通过".equals(record.getType());
+        if (isCompletedRecord) {
+            openCompletedTaskDetailPage(record);
+            return;
+        }
+
         currentDetailMode = DETAIL_MODE_MINE;
         currentAcceptedDetailTask = null;
         currentDetailTask = null;
@@ -1229,15 +1925,26 @@ public class MainActivity extends AppCompatActivity {
         binding.tvDetailAmount.setText(getString(R.string.task_amount_format, record.getAmount()));
         binding.tvDetailMeta.setText(getString(R.string.mine_record_type_format, record.getType()));
         binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, record.getDeadline()));
-        String proofText = TextUtils.isEmpty(record.getCompletionProofUrl())
-                ? record.getDescription()
-                : record.getDescription() + "\n\n完成凭证：" + record.getCompletionProofUrl();
-        binding.tvDetailDescription.setText(proofText);
-        boolean canCancel = QUERY_PUBLISHED.equals(currentMineQuery) && "已发布".equals(record.getType());
-        binding.btnAcceptTask.setText(canCancel ? "取消发布" : "不可取消");
+        binding.tvDetailDescription.setText(record.getDescription());
+        binding.ivDetailProof.setVisibility(View.GONE);
+        binding.ivDetailProof.setImageDrawable(null);
+
+        boolean canCancel = QUERY_PUBLISHED.equals(currentMineQuery) && MINE_STATUS_ALL.equals(currentMineStatusFilter) && "已发布".equals(record.getType());
+        binding.btnAcceptTask.setText(canCancel ? "取消发布" : "关闭操作");
         binding.btnAcceptTask.setEnabled(canCancel);
         binding.btnSecondaryAction.setVisibility(View.GONE);
         binding.detailOverlay.setVisibility(View.VISIBLE);
+    }
+
+    private void openCompletedTaskDetailPage(MineTaskRecord record) {
+        Intent intent = new Intent(this, CompletedTaskDetailActivity.class);
+        intent.putExtra(CompletedTaskDetailActivity.EXTRA_TASK_TITLE, record.getTitle());
+        intent.putExtra(CompletedTaskDetailActivity.EXTRA_TASK_STATUS, record.getType());
+        intent.putExtra(CompletedTaskDetailActivity.EXTRA_TASK_DESCRIPTION, record.getDescription());
+        intent.putExtra(CompletedTaskDetailActivity.EXTRA_TASK_DEADLINE, record.getDeadline());
+        intent.putExtra(CompletedTaskDetailActivity.EXTRA_TASK_AMOUNT, record.getAmount());
+        intent.putExtra(CompletedTaskDetailActivity.EXTRA_TASK_PROOF_URL, record.getCompletionProofUrl());
+        startActivity(intent);
     }
 
     private void showAcceptedDetail(AcceptedTask task) {
@@ -1254,6 +1961,17 @@ public class MainActivity extends AppCompatActivity {
                 ? getString(R.string.accepted_proof_missing)
                 : getString(R.string.accepted_proof_uploaded_format, task.getCompletionProofUrl());
         binding.tvDetailDescription.setText(proofText);
+        if (TextUtils.isEmpty(task.getCompletionProofUrl())) {
+            binding.ivDetailProof.setVisibility(View.GONE);
+            binding.ivDetailProof.setImageDrawable(null);
+        } else {
+            binding.ivDetailProof.setVisibility(View.VISIBLE);
+            Glide.with(this)
+                    .load(task.getCompletionProofUrl())
+                    .placeholder(R.drawable.ic_avatar_placeholder)
+                    .error(R.drawable.ic_avatar_placeholder)
+                    .into(binding.ivDetailProof);
+        }
         binding.btnAcceptTask.setText(getAcceptedPrimaryActionText(task));
         boolean canComplete = canCompleteAcceptedTask(task);
         binding.btnAcceptTask.setEnabled(canComplete && !isSubmittingProof);
@@ -1499,11 +2217,15 @@ public class MainActivity extends AppCompatActivity {
         private final long id;
         private final String title;
         private final String message;
+        private final String timeText;
+        private boolean isRead;
 
-        private AppNotification(long id, String title, String message) {
+        private AppNotification(long id, String title, String message, String timeText, boolean isRead) {
             this.id = id;
             this.title = title;
             this.message = message;
+            this.timeText = timeText;
+            this.isRead = isRead;
         }
     }
 }

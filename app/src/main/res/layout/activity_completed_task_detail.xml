@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/auth_background">
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="36dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingTop="24dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="28dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_auth_header"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnBack"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        android:text="←"
+                        android:textColor="@android:color/white"
+                        android:textSize="18sp"
+                        app:backgroundTint="#3329404F"
+                        app:cornerRadius="14dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="任务详情"
+                            android:textColor="#CCFFFFFF"
+                            android:textSize="12sp" />
+
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvDetailTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
+                    android:text="任务标题"
+                    android:textColor="@android:color/white"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="96dp"
+                        android:layout_weight="1"
+                        android:background="#16000000"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="任务金额"
+                            android:textColor="#B3FFFFFF"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvDetailAmount"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="¥ 12.50"
+                            android:textColor="#FFFFE0A3"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="96dp"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:background="#16000000"
+                        android:gravity="center_vertical"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="任务时间"
+                            android:textColor="#B3FFFFFF"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/tvDetailDeadline"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="任务时间"
+                            android:textColor="#F5FFFFFF"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                app:cardBackgroundColor="@color/dashboard_surface"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/dashboard_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="完成任务内容"
+                        android:textColor="@color/dashboard_title"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvCompletedContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_task_pill"
+                        android:lineSpacingExtra="3dp"
+                        android:padding="16dp"
+                        android:text="内容"
+                        android:textColor="@color/dashboard_subtitle"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:text="完成图片"
+                        android:textColor="@color/dashboard_title"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        app:cardBackgroundColor="#FFF8F2E8"
+                        app:cardCornerRadius="22dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/dashboard_stroke"
+                        app:strokeWidth="1dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="12dp">
+
+                            <com.google.android.material.imageview.ShapeableImageView
+                                android:id="@+id/ivDetailProof"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:adjustViewBounds="true"
+                                android:maxHeight="560dp"
+                                android:scaleType="fitCenter"
+                                android:src="@drawable/ic_avatar_placeholder"
+                                android:visibility="gone"
+                                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CardImage" />
+
+                            <TextView
+                                android:id="@+id/tvProofEmpty"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:padding="18dp"
+                                android:text="暂未上传完成图片"
+                                android:textColor="@color/dashboard_muted"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                app:cardBackgroundColor="@color/dashboard_surface"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/dashboard_stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="互动"
+                        android:textColor="@color/dashboard_title"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        tools:ignore="HardcodedText" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReward"
+                            android:layout_width="0dp"
+                            android:layout_height="52dp"
+                            android:layout_weight="1"
+                            android:text="@string/completed_detail_reward"
+                            app:backgroundTint="@color/avatar_ring"
+                            app:cornerRadius="16dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnFeedback"
+                            android:layout_width="0dp"
+                            android:layout_height="52dp"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:text="@string/completed_detail_feedback"
+                            app:backgroundTint="@color/avatar_ring"
+                            app:cornerRadius="16dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</FrameLayout>

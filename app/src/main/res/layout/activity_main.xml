@@ -518,32 +518,145 @@
                                     android:textStyle="bold" />
 
                                 <TextView
-                                    android:id="@+id/btnQueryPublished"
+                                    android:id="@+id/btnOpenPublishPanel"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:background="@drawable/bg_task_pill"
+                                    android:background="@drawable/bg_nav_selected"
                                     android:paddingStart="12dp"
                                     android:paddingTop="8dp"
                                     android:paddingEnd="12dp"
                                     android:paddingBottom="8dp"
-                                    android:text="查已发布"
+                                    android:text="发布任务"
                                     android:textColor="@color/dashboard_title"
                                     android:textStyle="bold" />
 
                                 <TextView
-                                    android:id="@+id/btnQueryCompleted"
+                                    android:id="@+id/btnQueryPublished"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginStart="10dp"
-                                    android:background="@drawable/bg_task_pill"
+                                    android:background="@drawable/bg_nav_selected"
                                     android:paddingStart="12dp"
                                     android:paddingTop="8dp"
                                     android:paddingEnd="12dp"
                                     android:paddingBottom="8dp"
-                                    android:text="查已完成"
+                                    android:text="历史发布"
                                     android:textColor="@color/dashboard_title"
                                     android:textStyle="bold" />
                             </LinearLayout>
+
+                            <HorizontalScrollView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="14dp"
+                                android:scrollbars="none">
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal">
+
+                                    <LinearLayout
+                                        android:id="@+id/mineFilterAllToggle"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:background="@drawable/bg_nav_selected"
+                                        android:clickable="true"
+                                        android:focusable="true"
+                                        android:gravity="center"
+                                        android:orientation="horizontal"
+                                        android:paddingStart="12dp"
+                                        android:paddingTop="8dp"
+                                        android:paddingEnd="12dp"
+                                        android:paddingBottom="8dp">
+
+                                        <TextView
+                                            android:id="@+id/btnMineFilterAll"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:text="全部"
+                                            android:textColor="@color/dashboard_title"
+                                            android:textStyle="bold" />
+
+                                        <ImageView
+                                            android:id="@+id/ivMineFilterArrow"
+                                            android:layout_width="16dp"
+                                            android:layout_height="16dp"
+                                            android:layout_marginStart="6dp"
+                                            android:rotation="0"
+                                            android:src="@android:drawable/arrow_down_float"
+                                            android:tint="@color/dashboard_title" />
+                                    </LinearLayout>
+
+                                    <LinearLayout
+                                        android:id="@+id/mineExtraFilters"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:alpha="0"
+                                        android:orientation="horizontal"
+                                        android:translationX="-8dp"
+                                        android:visibility="gone">
+
+                                        <TextView
+                                            android:id="@+id/btnMineFilterCompleted"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="10dp"
+                                            android:background="@drawable/bg_task_pill"
+                                            android:paddingStart="12dp"
+                                            android:paddingTop="8dp"
+                                            android:paddingEnd="12dp"
+                                            android:paddingBottom="8dp"
+                                            android:text="已完成"
+                                            android:textColor="@color/dashboard_subtitle"
+                                            android:textStyle="bold" />
+
+                                        <TextView
+                                            android:id="@+id/btnMineFilterAccepted"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="10dp"
+                                            android:background="@drawable/bg_task_pill"
+                                            android:paddingStart="12dp"
+                                            android:paddingTop="8dp"
+                                            android:paddingEnd="12dp"
+                                            android:paddingBottom="8dp"
+                                            android:text="已接取"
+                                            android:textColor="@color/dashboard_subtitle"
+                                            android:textStyle="bold" />
+
+                                        <TextView
+                                            android:id="@+id/btnMineFilterCancelled"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="10dp"
+                                            android:background="@drawable/bg_task_pill"
+                                            android:paddingStart="12dp"
+                                            android:paddingTop="8dp"
+                                            android:paddingEnd="12dp"
+                                            android:paddingBottom="8dp"
+                                            android:text="已取消"
+                                            android:textColor="@color/dashboard_subtitle"
+                                            android:textStyle="bold" />
+
+                                        <TextView
+                                            android:id="@+id/btnMineFilterRejected"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"
+                                            android:layout_marginStart="10dp"
+                                            android:background="@drawable/bg_task_pill"
+                                            android:paddingStart="12dp"
+                                            android:paddingTop="8dp"
+                                            android:paddingEnd="12dp"
+                                            android:paddingBottom="8dp"
+                                            android:text="驳回"
+                                            android:textColor="@color/dashboard_subtitle"
+                                            android:textStyle="bold" />
+
+
+                                    </LinearLayout>
+                                </LinearLayout>
+                            </HorizontalScrollView>
 
 
                             <TextView
@@ -564,31 +677,6 @@
                                 android:textColor="@color/dashboard_title"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="16dp"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
-
-                                <com.google.android.material.button.MaterialButton
-                                    android:id="@+id/btnOpenPublishPanel"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="48dp"
-                                    android:text="发布任务"
-                                    app:backgroundTint="@color/auth_accent"
-                                    app:cornerRadius="16dp" />
-
-                                <com.google.android.material.button.MaterialButton
-                                    android:id="@+id/btnMineLogout"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="48dp"
-                                    android:layout_marginStart="12dp"
-                                    android:text="退出"
-                                    app:backgroundTint="@color/auth_logout"
-                                    app:cornerRadius="16dp" />
-                            </LinearLayout>
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
@@ -764,6 +852,16 @@
                 android:text="任务详情描述"
                 android:textColor="#EDEDED"
                 android:textSize="14sp" />
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/ivDetailProof"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginTop="14dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_avatar_placeholder"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.MessageInBottle.CardImage" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAcceptTask"
@@ -1024,6 +1122,15 @@
                 android:textColor="@color/dashboard_title"
                 android:textSize="16sp"
                 android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMineLogout"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="18dp"
+                android:text="退出"
+                app:backgroundTint="@color/auth_logout"
+                app:cornerRadius="16dp" />
         </LinearLayout>
     </FrameLayout>
 
@@ -1050,13 +1157,33 @@
             android:paddingEnd="20dp"
             android:paddingBottom="20dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/notification_panel_title"
-                android:textColor="@color/notification_title"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/notification_panel_title"
+                    android:textColor="@color/notification_title"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnMarkAllNotificationsRead"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:text="@string/notification_mark_all_read"
+                    android:textSize="12sp"
+                    app:backgroundTint="@color/auth_accent"
+                    app:cornerRadius="14dp" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -1065,6 +1192,102 @@
                 android:text="任务动态会在这里提醒您"
                 android:textColor="@color/notification_body"
                 android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btnQueryNotificationAll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_nav_selected"
+                    android:paddingStart="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/notification_filter_all"
+                    android:textColor="@color/dashboard_title"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btnQueryNotificationRead"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_task_pill"
+                    android:paddingStart="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/notification_filter_read"
+                    android:textColor="@color/dashboard_subtitle"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btnQueryNotificationUnread"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_task_pill"
+                    android:paddingStart="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/notification_filter_unread"
+                    android:textColor="@color/dashboard_subtitle"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/notificationSelectionBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_task_pill"
+                android:gravity="center_vertical"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tvNotificationSelectionHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/notification_select_hint"
+                    android:textColor="@color/notification_title"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDeleteSelectedNotifications"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_weight="1"
+                        android:text="@string/notification_delete_selected"
+                        app:backgroundTint="@color/auth_logout"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCancelNotificationSelection"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_marginStart="10dp"
+                        android:layout_weight="1"
+                        android:text="@string/notification_cancel_selection"
+                        app:backgroundTint="@color/dashboard_muted"
+                        app:cornerRadius="14dp" />
+                </LinearLayout>
+            </LinearLayout>
 
             <ScrollView
                 android:layout_width="match_parent"
