@@ -155,6 +155,21 @@ public class StageTwoRepository {
         }
     }
 
+    public CompleteTaskResult cancelAcceptedTask(long taskId, long userId) {
+        try {
+            String json = NetworkClient.getInstance().post("/api/tasks/" + taskId + "/accepted/cancel", new AcceptTaskRequest(userId));
+            java.lang.reflect.Type type = new TypeToken<ApiResponse<AcceptedTask>>() { }.getType();
+            ApiResponse<AcceptedTask> response = NetworkClient.getInstance().gson().fromJson(json, type);
+            if (response == null) {
+                return new CompleteTaskResult(false, "取消失败", null);
+            }
+            return new CompleteTaskResult(response.isSuccess(), response.getMessage(), response.getData());
+        } catch (Exception exception) {
+            Log.e(TAG, "cancelAcceptedTask failed", exception);
+            return new CompleteTaskResult(false, "取消失败，请检查网络或后端配置", null);
+        }
+    }
+
     private <T> T request(Callable<T> callable) throws Exception {
         return NetworkClient.getInstance().executor().submit(callable).get();
     }

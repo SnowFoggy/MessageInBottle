@@ -53,6 +53,10 @@ public class NetworkClient {
         return executorService;
     }
 
+    public OkHttpClient webSocketClient() {
+        return okHttpClient;
+    }
+
     public Gson gson() {
         return gson;
     }

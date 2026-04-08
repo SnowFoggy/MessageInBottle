@@ -57,6 +57,11 @@ public class TaskController {
         return ApiResponse.success("接取成功", taskService.acceptTask(taskId, request.getUserId()));
     }
 
+    @PostMapping("/tasks/{taskId}/accepted/cancel")
+    public ApiResponse<AcceptedTaskResponse> cancelAcceptedTask(@PathVariable Long taskId, @Valid @RequestBody AcceptTaskRequest request) {
+        return ApiResponse.success("取消成功", taskService.cancelAcceptedTask(taskId, request.getUserId()));
+    }
+
     @PostMapping(value = "/tasks/{taskId}/complete", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<AcceptedTaskResponse> completeTask(@PathVariable Long taskId,
                                                           @RequestParam("userId") Long userId,

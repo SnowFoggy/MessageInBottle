@@ -29,15 +29,18 @@ public class TaskService {
     private final UserRepository userRepository;
     private final WalletRepository walletRepository;
     private final UploadService uploadService;
+    private final MessageBoxService messageBoxService;
 
     public TaskService(TaskRepository taskRepository,
                        UserRepository userRepository,
                        WalletRepository walletRepository,
-                       UploadService uploadService) {
+                       UploadService uploadService,
+                       MessageBoxService messageBoxService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.uploadService = uploadService;
+        this.messageBoxService = messageBoxService;
     }
 
     public List<String> getCategories() {
@@ -83,6 +86,13 @@ public class TaskService {
         task.setCompletionProofUrl(null);
         task.setCreatedAt(now);
         task = taskRepository.save(task);
+        messageBoxService.createAndPush(
+                user.getId(),
+                task.getId(),
+                "publish_success",
+                "发布提醒",
+                "您发布的任务《" + task.getTitle() + "》已发布成功"
+        );
         return toHomeTaskResponse(task);
     }
 
@@ -113,6 +123,20 @@ public class TaskService {
         task.setCompleted(false);
         task.setCompletionProofUrl(null);
         task = taskRepository.save(task);
+        messageBoxService.createAndPush(
+                userId,
+                task.getId(),
+                "accept_success",
+                "接取成功",
+                "您已成功接取任务《" + task.getTitle() + "》"
+        );
+        messageBoxService.createAndPush(
+                task.getPublisherId(),
+                task.getId(),
+                "task_accepted",
+                "任务接取提醒",
+                "您发布的任务《" + task.getTitle() + "》已被接取"
+        );
         return toAcceptedTaskResponse(task);
     }
 
@@ -145,6 +169,13 @@ public class TaskService {
         task.setReviewStatus("待审核");
         task.setCompletionProofUrl(proofUrl);
         task = taskRepository.save(task);
+        messageBoxService.createAndPush(
+                task.getPublisherId(),
+                task.getId(),
+                "task_pending_review",
+                "任务待审核提醒",
+                "您发布的任务《" + task.getTitle() + "》已被完成，等待管理员审核"
+        );
         return toAcceptedTaskResponse(task);
     }
 
@@ -169,20 +200,87 @@ public class TaskService {
         wallet.setUpdatedAt(System.currentTimeMillis());
         walletRepository.save(wallet);
 
-        task.setReviewStatus("通过");
+        task.setReviewStatus("审核通过");
         task.setStatus("DONE");
         task = taskRepository.save(task);
+        messageBoxService.createAndPush(
+                task.getPublisherId(),
+                task.getId(),
+                "task_completed",
+                "任务完成提醒",
+                "您发布的任务《" + task.getTitle() + "》已完成"
+        );
+        messageBoxService.createAndPush(
+                accepterId,
+                task.getId(),
+                "reward_granted",
+                "审核通过",
+                "您接取的任务《" + task.getTitle() + "》审核通过，金额已发放到您的账户"
+        );
         return toAdminReviewItemResponse(task);
     }
 
     public AdminReviewItemResponse rejectTask(Long taskId) {
         Task task = getPendingReviewTask(taskId);
+        Long accepterId = task.getAccepterId();
         refundPublisher(task);
         task.setReviewStatus("驳回");
         task.setStatus("CANCELLED");
         task.setCompleted(false);
+        task.setCompletionProofUrl(null);
         task = taskRepository.save(task);
+        messageBoxService.createAndPush(
+                task.getPublisherId(),
+                task.getId(),
+                "task_rejected_publisher",
+                "审核驳回",
+                "您发布的任务《" + task.getTitle() + "》审核未通过，金额已退回"
+        );
+        if (accepterId != null) {
+            messageBoxService.createAndPush(
+                    accepterId,
+                    task.getId(),
+                    "task_rejected_accepter",
+                    "任务完成失败",
+                    "您接取的任务《" + task.getTitle() + "》审核驳回，任务完成失败"
+            );
+        }
         return toAdminReviewItemResponse(task);
+    }
+
+    public AcceptedTaskResponse cancelAcceptedTask(Long taskId, Long userId) {
+        processExpiredAcceptedTasks();
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("任务不存在"));
+
+        if (!userId.equals(task.getAccepterId())) {
+            throw new IllegalArgumentException("只能取消自己接取的任务");
+        }
+        if (!"ACCEPTED".equals(task.getStatus()) || Boolean.TRUE.equals(task.getCompleted())) {
+            throw new IllegalArgumentException("当前任务不可取消接取");
+        }
+
+        refundPublisher(task);
+        task.setStatus("CANCELLED");
+        task.setReviewStatus("已取消接取");
+        task.setCompleted(false);
+        task.setCompletionProofUrl(null);
+        task = taskRepository.save(task);
+        messageBoxService.createAndPush(
+                task.getPublisherId(),
+                task.getId(),
+                "task_accept_cancelled_publisher",
+                "任务已取消",
+                "您发布的任务《" + task.getTitle() + "》已被接取者取消，金额已退回"
+        );
+        messageBoxService.createAndPush(
+                userId,
+                task.getId(),
+                "task_accept_cancelled_accepter",
+                "取消接取",
+                "您已取消接取任务《" + task.getTitle() + "》，任务已结束"
+        );
+        return toAcceptedTaskResponse(task);
     }
 
     public PublishedTaskResponse cancelPublishedTask(Long taskId, Long userId) {
@@ -254,6 +352,24 @@ public class TaskService {
                 task.setCompleted(false);
                 task.setCompletionProofUrl(null);
                 taskRepository.save(task);
+                if (task.getPublisherId() != null) {
+                    messageBoxService.createAndPush(
+                            task.getPublisherId(),
+                            task.getId(),
+                            "task_timeout_publisher",
+                            "任务超时关闭",
+                            "您发布的任务《" + task.getTitle() + "》因超时未完成，金额已退回"
+                    );
+                }
+                if (task.getAccepterId() != null) {
+                    messageBoxService.createAndPush(
+                            task.getAccepterId(),
+                            task.getId(),
+                            "task_timeout_accepter",
+                            "任务已失败",
+                            "您接取的任务《" + task.getTitle() + "》已超时，任务完成失败"
+                    );
+                }
             }
         }
     }
@@ -270,9 +386,20 @@ public class TaskService {
     private void refundPublisher(Task task) {
         Wallet wallet = walletRepository.findByUserId(task.getPublisherId())
                 .orElseThrow(() -> new IllegalArgumentException("发布者钱包不存在"));
+        if (hasRefunded(task)) {
+            return;
+        }
         wallet.setBalance(wallet.getBalance() + task.getAmount());
         wallet.setUpdatedAt(System.currentTimeMillis());
         walletRepository.save(wallet);
+    }
+
+    private boolean hasRefunded(Task task) {
+        String reviewStatus = task.getReviewStatus();
+        return "已取消".equals(reviewStatus)
+                || "已超时关闭".equals(reviewStatus)
+                || "驳回".equals(reviewStatus)
+                || "已取消接取".equals(reviewStatus);
     }
 
     private Task getPendingReviewTask(Long taskId) {
@@ -351,7 +478,7 @@ public class TaskService {
             if ("驳回".equals(task.getReviewStatus())) {
                 return "审核驳回";
             }
-            return "进行中";
+            return "已接取";
         }
         if ("CANCELLED".equals(task.getStatus())) {
             return task.getReviewStatus();

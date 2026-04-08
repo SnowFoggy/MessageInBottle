@@ -28,9 +28,12 @@ import com.bumptech.glide.Glide;
 import com.example.messageinbottle.data.local.SessionManager;
 import com.example.messageinbottle.data.model.AcceptedTask;
 import com.example.messageinbottle.data.model.HomeTask;
+import com.example.messageinbottle.data.model.MessageEnvelope;
+import com.example.messageinbottle.data.model.MessageItem;
 import com.example.messageinbottle.data.model.MineTaskRecord;
 import com.example.messageinbottle.data.model.Wallet;
 import com.example.messageinbottle.data.repository.AuthRepository;
+import com.example.messageinbottle.data.repository.MessageRepository;
 import com.example.messageinbottle.data.repository.MineRepository;
 import com.example.messageinbottle.data.repository.StageTwoRepository;
 import com.example.messageinbottle.data.remote.NetworkClient;
@@ -42,15 +45,24 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+
+import okhttp3.Request;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String QUERY_PUBLISHED = "已发布";
     private static final String QUERY_COMPLETED = "已完成";
     private static final String QUERY_ACCEPTED_IN_PROGRESS = "进行中";
+    private static final String QUERY_ACCEPTED_PENDING = "待审核";
     private static final String QUERY_ACCEPTED_COMPLETED = "已完成";
+    private static final String QUERY_ACCEPTED_FAILED = "完成失败";
     private static final long ACCEPTED_TASK_REFRESH_INTERVAL_MS = 5000L;
 
     private static final int DETAIL_MODE_HOME = 1;
@@ -62,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private SessionManager sessionManager;
     private StageTwoRepository stageTwoRepository;
     private MineRepository mineRepository;
+    private MessageRepository messageRepository;
     private boolean isLoginMode = true;
     private String selectedCategory = "全部";
     private String currentMineQuery = QUERY_PUBLISHED;
@@ -74,6 +87,11 @@ public class MainActivity extends AppCompatActivity {
     private File pendingAvatarImageFile;
     private boolean isSubmittingProof;
     private boolean isUploadingAvatar;
+    private WebSocket messageWebSocket;
+    private final List<AppNotification> notifications = new ArrayList<>();
+    private final Set<Long> notificationIds = new HashSet<>();
+    private final List<String> lastAcceptedNotificationKeys = new ArrayList<>();
+    private final List<String> lastMineNotificationKeys = new ArrayList<>();
 
     private final ActivityResultLauncher<String> imagePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -135,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         stageTwoRepository = new StageTwoRepository(this);
         mineRepository = new MineRepository(this);
+        messageRepository = new MessageRepository(this);
 
         initViews();
         bindActions();
@@ -145,12 +164,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         startAcceptedTaskAutoRefresh();
+        connectMessageWebSocketIfNeeded();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         stopAcceptedTaskAutoRefresh();
+        disconnectMessageWebSocket();
     }
 
     private void initViews() {
@@ -159,7 +180,9 @@ public class MainActivity extends AppCompatActivity {
         renderCategoryChips();
         updateAcceptedQueryButtons();
         updateMineQueryButtons();
+        renderNotifications();
         hideSideMenu();
+        hideNotificationPanel();
     }
 
     private void bindActions() {
@@ -179,13 +202,17 @@ public class MainActivity extends AppCompatActivity {
             renderMineTaskList();
         });
         binding.ivUserAvatar.setOnClickListener(v -> toggleSideMenu());
+        binding.btnNotification.setOnClickListener(v -> toggleNotificationPanel());
         binding.sideMenuOverlay.setOnClickListener(v -> hideSideMenu());
         binding.sideMenuPanel.setOnClickListener(v -> { });
+        binding.notificationOverlay.setOnClickListener(v -> hideNotificationPanel());
+        binding.notificationPanel.setOnClickListener(v -> { });
         binding.btnUploadAvatar.setOnClickListener(v -> pickAvatarImage());
         binding.menuProfile.setOnClickListener(v -> showMessage(getString(R.string.avatar_feature_reserved_profile)));
         binding.menuSettingsPrivacy.setOnClickListener(v -> showMessage(getString(R.string.avatar_feature_reserved_privacy)));
         binding.btnCloseDetail.setOnClickListener(v -> hideDetail());
         binding.btnAcceptTask.setOnClickListener(v -> onDetailPrimaryAction());
+        binding.btnSecondaryAction.setOnClickListener(v -> onDetailSecondaryAction());
         binding.detailOverlay.setOnClickListener(v -> hideDetail());
         binding.btnOpenPublishPanel.setOnClickListener(v -> showPublishPanel());
         binding.btnConfirmPublish.setOnClickListener(v -> publishTask());
@@ -204,7 +231,17 @@ public class MainActivity extends AppCompatActivity {
             renderAcceptedTaskList();
         });
         binding.btnQueryAcceptedCompleted.setOnClickListener(v -> {
+            currentAcceptedQuery = QUERY_ACCEPTED_PENDING;
+            updateAcceptedQueryButtons();
+            renderAcceptedTaskList();
+        });
+        binding.btnQueryAcceptedPending.setOnClickListener(v -> {
             currentAcceptedQuery = QUERY_ACCEPTED_COMPLETED;
+            updateAcceptedQueryButtons();
+            renderAcceptedTaskList();
+        });
+        binding.btnQueryAcceptedFailed.setOnClickListener(v -> {
+            currentAcceptedQuery = QUERY_ACCEPTED_FAILED;
             updateAcceptedQueryButtons();
             renderAcceptedTaskList();
         });
@@ -345,6 +382,7 @@ public class MainActivity extends AppCompatActivity {
         hideDetail();
         hidePublishPanel();
         hideSideMenu();
+        hideNotificationPanel();
 
         if (loggedIn) {
             String displayName = sessionManager.getDisplayName();
@@ -354,13 +392,25 @@ public class MainActivity extends AppCompatActivity {
             binding.tvSessionUser.setText(getString(R.string.current_user_format, displayName));
             binding.tvDashboardGreeting.setText(getString(R.string.dashboard_greeting_format, displayName));
             binding.tvDrawerUserName.setText(displayName);
+            notifications.clear();
+            notificationIds.clear();
+            lastAcceptedNotificationKeys.clear();
+            lastMineNotificationKeys.clear();
+            renderNotifications();
             renderUserAvatar();
             renderDashboardLists();
             renderWalletInfo();
             renderMineTaskList();
             selectDashboardPage(binding.navHome);
+            fetchMessages();
         } else {
             binding.cardSession.setVisibility(View.GONE);
+            notifications.clear();
+            notificationIds.clear();
+            lastAcceptedNotificationKeys.clear();
+            lastMineNotificationKeys.clear();
+            disconnectMessageWebSocket();
+            renderNotifications();
             clearDashboardLists();
         }
     }
@@ -404,6 +454,7 @@ public class MainActivity extends AppCompatActivity {
                 ? mineRepository.getPublishedTasks(sessionManager.getUserId())
                 : mineRepository.getCompletedTasks(sessionManager.getUserId());
 
+        syncMineTaskNotifications(records);
         for (MineTaskRecord record : records) {
             binding.publishedTaskList.addView(createMineRecordCard(record));
         }
@@ -422,6 +473,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showSideMenu() {
+        hideNotificationPanel();
         binding.sideMenuOverlay.setVisibility(View.VISIBLE);
     }
 
@@ -435,6 +487,229 @@ public class MainActivity extends AppCompatActivity {
         } else {
             showSideMenu();
         }
+    }
+
+    private void showNotificationPanel() {
+        hideSideMenu();
+        if (sessionManager.isLoggedIn()) {
+            fetchMessages();
+        }
+        binding.notificationOverlay.setVisibility(View.VISIBLE);
+    }
+
+    private void hideNotificationPanel() {
+        binding.notificationOverlay.setVisibility(View.GONE);
+    }
+
+    private void toggleNotificationPanel() {
+        if (binding.notificationOverlay.getVisibility() == View.VISIBLE) {
+            hideNotificationPanel();
+        } else {
+            showNotificationPanel();
+        }
+    }
+
+    private void renderNotifications() {
+        binding.notificationList.removeAllViews();
+        if (notifications.isEmpty()) {
+            TextView emptyView = new TextView(this);
+            emptyView.setText(R.string.notification_empty);
+            emptyView.setTextColor(getColor(R.color.notification_body));
+            emptyView.setTextSize(14);
+            emptyView.setPadding(0, dp(12), 0, 0);
+            binding.notificationList.addView(emptyView);
+        } else {
+            for (AppNotification notification : notifications) {
+                binding.notificationList.addView(createNotificationCard(notification));
+            }
+        }
+        updateNotificationBadge();
+    }
+
+    private void fetchMessages() {
+        if (!sessionManager.isLoggedIn()) {
+            return;
+        }
+        new Thread(() -> {
+            List<MessageItem> items = messageRepository.getMessages(sessionManager.getUserId());
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                notifications.clear();
+                notificationIds.clear();
+                for (MessageItem item : items) {
+                    addNotificationFromMessage(item);
+                }
+                renderNotifications();
+                connectMessageWebSocketIfNeeded();
+            });
+        }).start();
+    }
+
+    private void connectMessageWebSocketIfNeeded() {
+        if (!sessionManager.isLoggedIn() || messageWebSocket != null) {
+            return;
+        }
+        String baseUrl = com.example.messageinbottle.BuildConfig.API_BASE_URL;
+        String wsUrl = baseUrl.replaceFirst("^http://", "ws://").replaceFirst("^https://", "wss://")
+                + "/ws/messages?userId=" + sessionManager.getUserId();
+        Request request = new Request.Builder().url(wsUrl).build();
+        messageWebSocket = NetworkClient.getInstance().webSocketClient().newWebSocket(request, new WebSocketListener() {
+            @Override
+            public void onMessage(WebSocket webSocket, String text) {
+                MessageEnvelope envelope = NetworkClient.getInstance().gson().fromJson(text, MessageEnvelope.class);
+                if (envelope == null || envelope.getMessage() == null) {
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+                    addNotificationFromMessage(envelope.getMessage());
+                    renderNotifications();
+                });
+            }
+
+            @Override
+            public void onClosed(WebSocket webSocket, int code, String reason) {
+                if (messageWebSocket == webSocket) {
+                    messageWebSocket = null;
+                }
+            }
+
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, okhttp3.Response response) {
+                if (messageWebSocket == webSocket) {
+                    messageWebSocket = null;
+                }
+            }
+        });
+    }
+
+    private void disconnectMessageWebSocket() {
+        if (messageWebSocket != null) {
+            messageWebSocket.close(1000, "pause");
+            messageWebSocket = null;
+        }
+    }
+
+    private void addNotificationFromMessage(MessageItem item) {
+        if (item == null || notificationIds.contains(item.getId())) {
+            return;
+        }
+        notificationIds.add(item.getId());
+        String title = TextUtils.isEmpty(item.getTitle()) ? getNotificationTitle(item.getType()) : item.getTitle();
+        notifications.add(new AppNotification(item.getId(), title, item.getContent()));
+        notifications.sort((left, right) -> Long.compare(right.id, left.id));
+    }
+
+    private View createNotificationCard(AppNotification notification) {
+        LinearLayout container = new LinearLayout(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.bottomMargin = dp(12);
+        container.setLayoutParams(params);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dp(16), dp(16), dp(16), dp(16));
+        container.setBackgroundResource(R.drawable.bg_task_pill);
+
+        TextView titleView = new TextView(this);
+        titleView.setText(notification.title);
+        titleView.setTextColor(getColor(R.color.notification_title));
+        titleView.setTextSize(15);
+        titleView.setTypeface(titleView.getTypeface(), Typeface.BOLD);
+
+        TextView bodyView = new TextView(this);
+        LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        bodyParams.topMargin = dp(6);
+        bodyView.setLayoutParams(bodyParams);
+        bodyView.setText(notification.message);
+        bodyView.setTextColor(getColor(R.color.notification_body));
+        bodyView.setTextSize(13);
+
+        container.addView(titleView);
+        container.addView(bodyView);
+        return container;
+    }
+
+    private void updateNotificationBadge() {
+        int count = notifications.size();
+        binding.tvNotificationBadge.setVisibility(count > 0 ? View.VISIBLE : View.GONE);
+        binding.tvNotificationBadge.setText(String.valueOf(Math.min(count, 99)));
+    }
+
+    private String getNotificationTitle(String type) {
+        if ("publish_success".equals(type)) {
+            return "发布提醒";
+        }
+        if ("task_accepted".equals(type)) {
+            return "任务接取提醒";
+        }
+        if ("task_pending_review".equals(type)) {
+            return "任务待审核提醒";
+        }
+        if ("task_completed".equals(type)) {
+            return "任务完成提醒";
+        }
+        if ("task_rejected_publisher".equals(type)) {
+            return "审核驳回";
+        }
+        if ("task_rejected_accepter".equals(type)) {
+            return "审核驳回";
+        }
+        if ("task_timeout_publisher".equals(type)) {
+            return "任务超时关闭";
+        }
+        if ("task_timeout_accepter".equals(type)) {
+            return "任务已失败";
+        }
+        if ("task_accept_cancelled_publisher".equals(type)) {
+            return "任务已取消";
+        }
+        if ("task_accept_cancelled_accepter".equals(type)) {
+            return "取消接取";
+        }
+        if ("task_cancel_failed".equals(type)) {
+            return "任务完成失败";
+        }
+        if ("accept_success".equals(type)) {
+            return "接取成功";
+        }
+        if ("reward_granted".equals(type)) {
+            return "审核通过";
+        }
+        return "消息通知";
+    }
+
+    private void syncAcceptedTaskNotifications(List<AcceptedTask> acceptedTasks) {
+        List<String> latestKeys = new ArrayList<>();
+        for (AcceptedTask task : acceptedTasks) {
+            if (task.isCompleted() && "审核通过".equals(task.getReviewStatus())) {
+                String key = task.getId() + "-" + task.getReviewStatus() + "-reward";
+                latestKeys.add(key);
+            }
+        }
+        lastAcceptedNotificationKeys.clear();
+        lastAcceptedNotificationKeys.addAll(latestKeys);
+    }
+
+    private void syncMineTaskNotifications(List<MineTaskRecord> records) {
+        List<String> latestKeys = new ArrayList<>();
+        for (MineTaskRecord record : records) {
+            if ("已接取".equals(record.getType())) {
+                latestKeys.add(record.getId() + "-accepted");
+            } else if ("已完成".equals(record.getType()) || "审核通过".equals(record.getType())) {
+                latestKeys.add(record.getId() + "-completed");
+            }
+        }
+        lastMineNotificationKeys.clear();
+        lastMineNotificationKeys.addAll(latestKeys);
     }
 
     private void pickAvatarImage() {
@@ -576,10 +851,10 @@ public class MainActivity extends AppCompatActivity {
     private void renderAcceptedTaskList() {
         binding.acceptedTaskList.removeAllViews();
         List<AcceptedTask> acceptedTasks = stageTwoRepository.getAcceptedTasks(sessionManager.getUserId());
-        boolean showCompleted = QUERY_ACCEPTED_COMPLETED.equals(currentAcceptedQuery);
+        syncAcceptedTaskNotifications(acceptedTasks);
         int visibleCount = 0;
         for (AcceptedTask task : acceptedTasks) {
-            if (task.isCompleted() != showCompleted) {
+            if (!matchesAcceptedQuery(task, currentAcceptedQuery)) {
                 continue;
             }
             binding.acceptedTaskList.addView(createAcceptedTaskCard(task));
@@ -587,7 +862,7 @@ public class MainActivity extends AppCompatActivity {
         }
         if (visibleCount == 0) {
             TextView emptyView = new TextView(this);
-            emptyView.setText(showCompleted ? "暂无已完成任务" : "暂无进行中任务");
+            emptyView.setText(getAcceptedEmptyText());
             emptyView.setTextColor(getColor(R.color.dashboard_muted));
             emptyView.setTextSize(14);
             LinearLayout.LayoutParams emptyParams = new LinearLayout.LayoutParams(
@@ -598,6 +873,39 @@ public class MainActivity extends AppCompatActivity {
             emptyView.setLayoutParams(emptyParams);
             binding.acceptedTaskList.addView(emptyView);
         }
+    }
+
+    private boolean matchesAcceptedQuery(AcceptedTask task, String query) {
+        if (QUERY_ACCEPTED_PENDING.equals(query)) {
+            return "待审核".equals(task.getReviewStatus());
+        }
+        if (QUERY_ACCEPTED_COMPLETED.equals(query)) {
+            return "审核通过".equals(task.getReviewStatus());
+        }
+        if (QUERY_ACCEPTED_FAILED.equals(query)) {
+            return isAcceptedTaskFailed(task);
+        }
+        return "进行中".equals(task.getReviewStatus());
+    }
+
+    private boolean isAcceptedTaskFailed(AcceptedTask task) {
+        String status = task.getReviewStatus();
+        return "驳回".equals(status)
+                || "已超时关闭".equals(status)
+                || "已取消接取".equals(status);
+    }
+
+    private String getAcceptedEmptyText() {
+        if (QUERY_ACCEPTED_PENDING.equals(currentAcceptedQuery)) {
+            return "暂无待审核任务";
+        }
+        if (QUERY_ACCEPTED_COMPLETED.equals(currentAcceptedQuery)) {
+            return "暂无已完成任务";
+        }
+        if (QUERY_ACCEPTED_FAILED.equals(currentAcceptedQuery)) {
+            return "暂无完成失败任务";
+        }
+        return "暂无进行中任务";
     }
 
     private void startAcceptedTaskAutoRefresh() {
@@ -712,7 +1020,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateAcceptedQueryButtons() {
         updateMineQueryButton(binding.btnQueryAcceptedInProgress, QUERY_ACCEPTED_IN_PROGRESS.equals(currentAcceptedQuery));
-        updateMineQueryButton(binding.btnQueryAcceptedCompleted, QUERY_ACCEPTED_COMPLETED.equals(currentAcceptedQuery));
+        updateMineQueryButton(binding.btnQueryAcceptedCompleted, QUERY_ACCEPTED_PENDING.equals(currentAcceptedQuery));
+        updateMineQueryButton(binding.btnQueryAcceptedPending, QUERY_ACCEPTED_COMPLETED.equals(currentAcceptedQuery));
+        updateMineQueryButton(binding.btnQueryAcceptedFailed, QUERY_ACCEPTED_FAILED.equals(currentAcceptedQuery));
     }
 
     private void updateMineQueryButtons() {
@@ -768,10 +1078,7 @@ public class MainActivity extends AppCompatActivity {
         TextView metaView = createSubtitleView(getString(R.string.accepted_meta_format, amount, task.getDeadline()), 10);
         TextView statusView = createMutedView(getString(R.string.review_status_format, task.getReviewStatus()), 6);
         TextView completeView = createMutedView(
-                getString(
-                        R.string.accepted_completed_format,
-                        getString(task.isCompleted() ? R.string.accepted_completed_yes : R.string.accepted_completed_no)
-                ),
+                getString(R.string.accepted_completed_format, getAcceptedCompletionStatusText(task)),
                 6
         );
 
@@ -782,10 +1089,10 @@ public class MainActivity extends AppCompatActivity {
         );
         completeParams.topMargin = dp(14);
         completeButton.setLayoutParams(completeParams);
-        completeButton.setText(task.isCompleted() ? R.string.accepted_action_done : R.string.accepted_action_complete);
+        completeButton.setText(getAcceptedPrimaryActionText(task));
         completeButton.setCornerRadius(dp(14));
         completeButton.setBackgroundTintList(getColorStateList(R.color.auth_accent));
-        completeButton.setEnabled(!task.isCompleted());
+        completeButton.setEnabled(true);
         completeButton.setOnClickListener(v -> showAcceptedDetail(task));
 
         container.addView(titleView);
@@ -793,6 +1100,7 @@ public class MainActivity extends AppCompatActivity {
         container.addView(statusView);
         container.addView(completeView);
         container.addView(completeButton);
+        container.setOnClickListener(v -> showAcceptedDetail(task));
         return container;
     }
 
@@ -907,6 +1215,7 @@ public class MainActivity extends AppCompatActivity {
         binding.tvDetailDescription.setText(task.getDescription());
         binding.btnAcceptTask.setText("接取任务");
         binding.btnAcceptTask.setEnabled(true);
+        binding.btnSecondaryAction.setVisibility(View.GONE);
         binding.detailOverlay.setVisibility(View.VISIBLE);
     }
 
@@ -927,6 +1236,7 @@ public class MainActivity extends AppCompatActivity {
         boolean canCancel = QUERY_PUBLISHED.equals(currentMineQuery) && "已发布".equals(record.getType());
         binding.btnAcceptTask.setText(canCancel ? "取消发布" : "不可取消");
         binding.btnAcceptTask.setEnabled(canCancel);
+        binding.btnSecondaryAction.setVisibility(View.GONE);
         binding.detailOverlay.setVisibility(View.VISIBLE);
     }
 
@@ -944,14 +1254,22 @@ public class MainActivity extends AppCompatActivity {
                 ? getString(R.string.accepted_proof_missing)
                 : getString(R.string.accepted_proof_uploaded_format, task.getCompletionProofUrl());
         binding.tvDetailDescription.setText(proofText);
-        binding.btnAcceptTask.setText(task.isCompleted() ? "已提交完成" : "上传图片并完成任务");
-        binding.btnAcceptTask.setEnabled(!task.isCompleted());
+        binding.btnAcceptTask.setText(getAcceptedPrimaryActionText(task));
+        boolean canComplete = canCompleteAcceptedTask(task);
+        binding.btnAcceptTask.setEnabled(canComplete && !isSubmittingProof);
+        if (canCancelAcceptedTask(task)) {
+            binding.btnSecondaryAction.setVisibility(View.VISIBLE);
+            binding.btnSecondaryAction.setEnabled(!isSubmittingProof);
+            binding.btnSecondaryAction.setText(getString(R.string.accepted_action_cancel));
+        } else {
+            binding.btnSecondaryAction.setVisibility(View.GONE);
+        }
         binding.detailOverlay.setVisibility(View.VISIBLE);
     }
 
     private void onDetailPrimaryAction() {
         if (currentDetailMode == DETAIL_MODE_ACCEPTED) {
-            if (isSubmittingProof) {
+            if (currentAcceptedDetailTask == null || isSubmittingProof || !canCompleteAcceptedTask(currentAcceptedDetailTask)) {
                 return;
             }
             pickProofImage();
@@ -962,6 +1280,13 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         acceptCurrentTask();
+    }
+
+    private void onDetailSecondaryAction() {
+        if (currentDetailMode != DETAIL_MODE_ACCEPTED || currentAcceptedDetailTask == null || isSubmittingProof) {
+            return;
+        }
+        cancelCurrentAcceptedTask();
     }
 
     private void acceptCurrentTask() {
@@ -997,7 +1322,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void pickProofImage() {
-        if (currentAcceptedDetailTask == null || currentAcceptedDetailTask.isCompleted() || isSubmittingProof) {
+        if (currentAcceptedDetailTask == null || isSubmittingProof || !canCompleteAcceptedTask(currentAcceptedDetailTask)) {
             return;
         }
         imagePickerLauncher.launch("image/*");
@@ -1025,7 +1350,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 if (result == null || !result.isSuccess() || result.getTask() == null) {
                     binding.btnAcceptTask.setEnabled(true);
-                    binding.btnAcceptTask.setText("上传图片并完成任务");
+                    binding.btnAcceptTask.setText(getString(R.string.accepted_action_complete));
                     String message = result == null ? null : result.getMessage();
                     showMessage(TextUtils.isEmpty(message) ? getString(R.string.task_action_invalid) : message);
                     return;
@@ -1037,6 +1362,71 @@ public class MainActivity extends AppCompatActivity {
                 showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.task_complete_success) : result.getMessage());
             });
         });
+    }
+
+    private void cancelCurrentAcceptedTask() {
+        if (currentAcceptedDetailTask == null || isSubmittingProof) {
+            return;
+        }
+        isSubmittingProof = true;
+        binding.btnAcceptTask.setEnabled(false);
+        binding.btnSecondaryAction.setEnabled(false);
+        binding.btnSecondaryAction.setText(getString(R.string.accepted_action_cancelled));
+
+        long taskId = currentAcceptedDetailTask.getId();
+        long userId = sessionManager.getUserId();
+        NetworkClient.getInstance().executor().execute(() -> {
+            StageTwoRepository.CompleteTaskResult result = stageTwoRepository.cancelAcceptedTask(taskId, userId);
+            runOnUiThread(() -> {
+                isSubmittingProof = false;
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                if (result == null || !result.isSuccess() || result.getTask() == null) {
+                    showAcceptedDetail(currentAcceptedDetailTask);
+                    String message = result == null ? null : result.getMessage();
+                    showMessage(TextUtils.isEmpty(message) ? getString(R.string.task_action_invalid) : message);
+                    return;
+                }
+                currentAcceptedDetailTask = result.getTask();
+                renderAcceptedTaskList();
+                renderMineTaskList();
+                renderWalletInfo();
+                filterHomeTasks();
+                hideDetail();
+                showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.task_cancel_accept_success) : result.getMessage());
+            });
+        });
+    }
+
+    private String getAcceptedPrimaryActionText(AcceptedTask task) {
+        if (isAcceptedTaskFailed(task)) {
+            return getString(R.string.accepted_action_failed);
+        }
+        if ("待审核".equals(task.getReviewStatus())) {
+            return getString(R.string.accepted_action_waiting);
+        }
+        return task.isCompleted() ? getString(R.string.accepted_action_done) : getString(R.string.accepted_action_complete);
+    }
+
+    private String getAcceptedCompletionStatusText(AcceptedTask task) {
+        if (isAcceptedTaskFailed(task)) {
+            return getString(R.string.accepted_completed_failed);
+        }
+        if ("待审核".equals(task.getReviewStatus())) {
+            return getString(R.string.accepted_completed_pending);
+        }
+        return getString(task.isCompleted() ? R.string.accepted_completed_yes : R.string.accepted_completed_no);
+    }
+
+    private boolean canCompleteAcceptedTask(AcceptedTask task) {
+        return !task.isCompleted()
+                && "进行中".equals(task.getReviewStatus())
+                && !isAcceptedTaskFailed(task);
+    }
+
+    private boolean canCancelAcceptedTask(AcceptedTask task) {
+        return !task.isCompleted() && "进行中".equals(task.getReviewStatus()) && !isAcceptedTaskFailed(task);
     }
 
     private File createTempImageFile(Uri uri, String prefix) {
@@ -1066,6 +1456,7 @@ public class MainActivity extends AppCompatActivity {
         currentDetailMode = DETAIL_MODE_HOME;
         pendingProofImageFile = null;
         isSubmittingProof = false;
+        binding.btnSecondaryAction.setVisibility(View.GONE);
         binding.detailOverlay.setVisibility(View.GONE);
     }
 
@@ -1102,5 +1493,17 @@ public class MainActivity extends AppCompatActivity {
 
     private void showMessage(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    private static class AppNotification {
+        private final long id;
+        private final String title;
+        private final String message;
+
+        private AppNotification(long id, String title, String message) {
+            this.id = id;
+            this.title = title;
+            this.message = message;
+        }
     }
 }

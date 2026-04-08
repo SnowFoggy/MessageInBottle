@@ -37,6 +37,14 @@
     <string name="accepted_action_complete">完成任务</string>
     <string name="accepted_action_waiting">等待审核</string>
     <string name="accepted_action_done">已完成提交</string>
+    <string name="accepted_action_failed">任务已失败</string>
+    <string name="accepted_action_cancel">取消接取</string>
+    <string name="accepted_action_cancelled">已取消接取</string>
+    <string name="accepted_query_pending">待审核</string>
+    <string name="accepted_query_failed">完成失败</string>
+    <string name="task_cancel_accept_success">已取消接取任务</string>
+    <string name="accepted_completed_pending">待审核</string>
+    <string name="accepted_completed_failed">完成失败</string>
     <string name="accepted_completed_format">完成状态：%1$s</string>
     <string name="accepted_completed_yes">已完成</string>
     <string name="accepted_completed_no">进行中</string>
@@ -56,4 +64,11 @@
     <string name="avatar_feature_reserved_profile">个人信息功能预留中</string>
     <string name="avatar_feature_reserved_privacy">设置与隐私功能预留中</string>
     <string name="avatar_picker_failed">图片读取失败，请重试</string>
+    <string name="notification_panel_title">消息通知</string>
+    <string name="notification_empty">暂时没有新消息</string>
+    <string name="notification_publish_success">您发布的任务《%1$s》已发布成功</string>
+    <string name="notification_task_accepted">您发布的任务《%1$s》已被接取</string>
+    <string name="notification_task_completed">您发布的任务《%1$s》已被完成</string>
+    <string name="notification_accept_success">您已成功接取任务《%1$s》</string>
+    <string name="notification_review_reward">您接取的任务《%1$s》审核通过，金额已发放到您的账户</string>
 </resources>

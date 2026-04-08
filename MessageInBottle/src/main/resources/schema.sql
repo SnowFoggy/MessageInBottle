@@ -32,3 +32,13 @@ CREATE TABLE IF NOT EXISTS tasks (
     completed BIT NOT NULL,
     created_at BIGINT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS messageBox (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    task_id BIGINT NULL,
+    type VARCHAR(64) NOT NULL,
+    title VARCHAR(128) NOT NULL,
+    content VARCHAR(500) NOT NULL,
+    created_at BIGINT NOT NULL
+);
