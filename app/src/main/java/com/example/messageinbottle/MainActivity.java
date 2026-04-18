@@ -22,6 +22,8 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.AutoCompleteTextView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -115,8 +117,10 @@ public class MainActivity extends AppCompatActivity {
     private int currentDetailMode = DETAIL_MODE_HOME;
     private File pendingProofImageFile;
     private File pendingAvatarImageFile;
+    private File pendingPublishImageFile;
     private boolean isSubmittingProof;
     private boolean isUploadingAvatar;
+    private boolean isPublishingTask;
     private WebSocket messageWebSocket;
     private final List<AppNotification> notifications = new ArrayList<>();
     private final Set<Long> notificationIds = new HashSet<>();
@@ -162,6 +166,22 @@ public class MainActivity extends AppCompatActivity {
                 }
                 pendingAvatarImageFile = tempFile;
                 uploadAvatar();
+            }
+    );
+
+    private final ActivityResultLauncher<String> publishImagePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri == null) {
+                    return;
+                }
+                File tempFile = createTempImageFile(uri, "task-cover");
+                if (tempFile == null) {
+                    showMessage(getString(R.string.avatar_picker_failed));
+                    return;
+                }
+                pendingPublishImageFile = tempFile;
+                renderPublishImagePreview();
             }
     );
 
@@ -226,6 +246,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initViews() {
         switchMode(true);
+        setupPublishTypeDropdown();
         selectDashboardPage(binding.navHome);
         renderCategoryChips();
         setMineFiltersExpanded(false, false);
@@ -288,6 +309,7 @@ public class MainActivity extends AppCompatActivity {
         binding.btnConfirmPublish.setOnClickListener(v -> publishTask());
         binding.btnClosePublishPanel.setOnClickListener(v -> hidePublishPanel());
         binding.publishOverlay.setOnClickListener(v -> hidePublishPanel());
+        binding.publishPanel.setOnClickListener(v -> { });
         binding.inputPublishDeadline.setOnClickListener(v -> openDeadlinePicker());
         binding.inputPublishDeadline.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
@@ -295,6 +317,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         binding.inputPublishDeadline.setKeyListener(null);
+        binding.publishDeadlineTrigger.setOnClickListener(v -> openDeadlinePicker());
+        binding.btnPickPublishImage.setOnClickListener(v -> pickPublishImage());
+        binding.btnClearPublishImage.setOnClickListener(v -> clearPublishImage());
         binding.btnQueryAcceptedInProgress.setOnClickListener(v -> {
             currentAcceptedQuery = QUERY_ACCEPTED_IN_PROGRESS;
             updateAcceptedQueryButtons();
@@ -489,6 +514,7 @@ public class MainActivity extends AppCompatActivity {
         binding.bottomNavBar.setVisibility(loggedIn ? View.VISIBLE : View.GONE);
         hideDetail();
         hidePublishPanel();
+        resetPublishState();
         hideSideMenu();
         hideNotificationPanel();
 
@@ -594,11 +620,24 @@ public class MainActivity extends AppCompatActivity {
         binding.inputPublishDescription.setText(null);
         binding.inputPublishAmount.setText(null);
         binding.inputPublishDeadline.setText(getDefaultDeadline());
+        binding.inputPublishType.setText("校园", false);
+        pendingPublishImageFile = null;
+        renderPublishImagePreview();
+        binding.bottomNavBar.setVisibility(View.GONE);
         binding.publishOverlay.setVisibility(View.VISIBLE);
+        binding.publishOverlay.bringToFront();
     }
 
     private void hidePublishPanel() {
         binding.publishOverlay.setVisibility(View.GONE);
+        if (sessionManager != null && sessionManager.isLoggedIn()) {
+            binding.bottomNavBar.setVisibility(View.VISIBLE);
+        }
+        pendingPublishImageFile = null;
+        renderPublishImagePreview();
+        binding.btnConfirmPublish.setEnabled(true);
+        binding.btnConfirmPublish.setText("确认发布");
+        isPublishingTask = false;
     }
 
     private void showSideMenu() {
@@ -1317,6 +1356,34 @@ public class MainActivity extends AppCompatActivity {
         avatarPickerLauncher.launch("image/*");
     }
 
+    private void pickPublishImage() {
+        if (isPublishingTask) {
+            return;
+        }
+        publishImagePickerLauncher.launch("image/*");
+    }
+
+    private void clearPublishImage() {
+        pendingPublishImageFile = null;
+        renderPublishImagePreview();
+    }
+
+    private void renderPublishImagePreview() {
+        if (pendingPublishImageFile == null) {
+            binding.ivPublishPreview.setImageDrawable(null);
+            binding.ivPublishPreview.setVisibility(View.GONE);
+            binding.btnClearPublishImage.setVisibility(View.GONE);
+            return;
+        }
+        binding.ivPublishPreview.setVisibility(View.VISIBLE);
+        binding.btnClearPublishImage.setVisibility(View.VISIBLE);
+        Glide.with(this)
+                .load(pendingPublishImageFile)
+                .placeholder(R.drawable.ic_avatar_placeholder)
+                .error(R.drawable.ic_avatar_placeholder)
+                .into(binding.ivPublishPreview);
+    }
+
     private void uploadAvatar() {
         if (pendingAvatarImageFile == null || isUploadingAvatar) {
             return;
@@ -1352,33 +1419,71 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void publishTask() {
+        if (isPublishingTask) {
+            return;
+        }
         String title = getInput(binding.inputPublishTitle.getText() == null ? null : binding.inputPublishTitle.getText().toString());
         String description = getInput(binding.inputPublishDescription.getText() == null ? null : binding.inputPublishDescription.getText().toString());
         String amountText = getInput(binding.inputPublishAmount.getText() == null ? null : binding.inputPublishAmount.getText().toString());
         String deadline = getInput(binding.inputPublishDeadline.getText() == null ? null : binding.inputPublishDeadline.getText().toString());
+        String category = getInput(binding.inputPublishType.getText() == null ? null : binding.inputPublishType.getText().toString());
 
-        if (TextUtils.isEmpty(title) || TextUtils.isEmpty(description) || TextUtils.isEmpty(amountText) || TextUtils.isEmpty(deadline)) {
+        if (TextUtils.isEmpty(title) || TextUtils.isEmpty(description) || TextUtils.isEmpty(amountText)
+                || TextUtils.isEmpty(deadline) || TextUtils.isEmpty(category)) {
             showMessage(getString(R.string.error_empty_publish));
             return;
         }
 
-        double amount = Double.parseDouble(amountText);
-        MineRepository.ActionResult result = mineRepository.publishTask(sessionManager.getUserId(), title, description, amount, deadline);
-        if (!result.isSuccess()) {
-            showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.error_network) : result.getMessage());
+        double amount;
+        try {
+            amount = Double.parseDouble(amountText);
+        } catch (NumberFormatException exception) {
+            showMessage("请输入正确的金额");
             return;
         }
-        binding.inputPublishTitle.setText(null);
-        binding.inputPublishDescription.setText(null);
-        binding.inputPublishAmount.setText(null);
-        binding.inputPublishDeadline.setText(null);
-        hidePublishPanel();
-        currentMineQuery = QUERY_PUBLISHED;
-        updateMineQueryButtons();
-        renderMineTaskList();
-        renderWalletInfo();
-        filterHomeTasks();
-        showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.publish_success) : result.getMessage());
+
+        isPublishingTask = true;
+        binding.btnConfirmPublish.setEnabled(false);
+        binding.btnConfirmPublish.setText("发布中...");
+
+        File publishImageFile = pendingPublishImageFile;
+        new Thread(() -> {
+            MineRepository.ActionResult result = mineRepository.publishTask(
+                    sessionManager.getUserId(),
+                    title,
+                    description,
+                    amount,
+                    deadline,
+                    category,
+                    publishImageFile
+            );
+            runOnUiThread(() -> {
+                isPublishingTask = false;
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                binding.btnConfirmPublish.setEnabled(true);
+                binding.btnConfirmPublish.setText("确认发布");
+                if (!result.isSuccess()) {
+                    showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.error_network) : result.getMessage());
+                    return;
+                }
+                binding.inputPublishTitle.setText(null);
+                binding.inputPublishDescription.setText(null);
+                binding.inputPublishAmount.setText(null);
+                binding.inputPublishDeadline.setText(null);
+                binding.inputPublishType.setText("校园", false);
+                pendingPublishImageFile = null;
+                renderPublishImagePreview();
+                hidePublishPanel();
+                currentMineQuery = QUERY_PUBLISHED;
+                updateMineQueryButtons();
+                renderMineTaskList();
+                renderWalletInfo();
+                filterHomeTasks();
+                showMessage(TextUtils.isEmpty(result.getMessage()) ? getString(R.string.publish_success) : result.getMessage());
+            });
+        }).start();
     }
 
     private String getDefaultDeadline() {
@@ -1409,6 +1514,20 @@ public class MainActivity extends AppCompatActivity {
                 true
         );
         timePickerDialog.show();
+    }
+
+    private void setupPublishTypeDropdown() {
+        String[] types = getResources().getStringArray(R.array.publish_task_types);
+        AutoCompleteTextView typeView = binding.inputPublishType;
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_1,
+                types
+        );
+        typeView.setAdapter(adapter);
+        if (types.length > 0) {
+            typeView.setText(types[0], false);
+        }
     }
 
     private LocalDateTime parseDeadlineOrDefault(String input) {
@@ -1749,6 +1868,9 @@ public class MainActivity extends AppCompatActivity {
         container.addView(metaView);
         container.addView(publisherView);
         container.addView(descriptionView);
+        if (!TextUtils.isEmpty(task.getTaskImageUrl())) {
+            container.addView(createCardImageView(task.getTaskImageUrl(), 12));
+        }
         container.addView(actionView);
         container.setOnClickListener(v -> showDetail(task));
         return container;
@@ -1792,6 +1914,9 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout container = createCardContainer();
         container.addView(createTitleView(record.getTitle(), 0));
         container.addView(createSubtitleView(record.getDescription(), 10));
+        if (!TextUtils.isEmpty(record.getTaskImageUrl())) {
+            container.addView(createCardImageView(record.getTaskImageUrl(), 12));
+        }
         container.addView(createMutedView(getString(R.string.mine_record_meta_format, record.getAmount(), record.getDeadline()), 8));
         container.addView(createMutedView(getString(R.string.mine_record_type_format, record.getType()), 6));
         if (MINE_STATUS_COMPLETED.equals(currentMineStatusFilter)) {
@@ -1874,6 +1999,26 @@ public class MainActivity extends AppCompatActivity {
         return view;
     }
 
+    private ImageView createCardImageView(String imageUrl, int topMarginDp) {
+        com.google.android.material.imageview.ShapeableImageView imageView = new com.google.android.material.imageview.ShapeableImageView(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(148)
+        );
+        params.topMargin = dp(topMarginDp);
+        imageView.setLayoutParams(params);
+        imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        imageView.setShapeAppearanceModel(imageView.getShapeAppearanceModel().toBuilder()
+                .setAllCornerSizes(dp(18))
+                .build());
+        Glide.with(this)
+                .load(imageUrl)
+                .placeholder(R.drawable.ic_avatar_placeholder)
+                .error(R.drawable.ic_avatar_placeholder)
+                .into(imageView);
+        return imageView;
+    }
+
     private TextView createActionText(String text, int topMarginDp) {
         TextView view = new TextView(this);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -1900,7 +2045,17 @@ public class MainActivity extends AppCompatActivity {
         binding.tvDetailMeta.setText(getString(R.string.task_detail_meta_format, task.getPublishTime(), task.getPublisher()));
         binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, task.getDeadline()));
         binding.tvDetailDescription.setText(task.getDescription());
-        binding.ivDetailProof.setVisibility(View.GONE);
+        if (TextUtils.isEmpty(task.getTaskImageUrl())) {
+            binding.ivDetailProof.setVisibility(View.GONE);
+            binding.ivDetailProof.setImageDrawable(null);
+        } else {
+            binding.ivDetailProof.setVisibility(View.VISIBLE);
+            Glide.with(this)
+                    .load(task.getTaskImageUrl())
+                    .placeholder(R.drawable.ic_avatar_placeholder)
+                    .error(R.drawable.ic_avatar_placeholder)
+                    .into(binding.ivDetailProof);
+        }
         binding.btnAcceptTask.setText("接取任务");
         binding.btnAcceptTask.setEnabled(true);
         binding.btnSecondaryAction.setVisibility(View.GONE);
@@ -1926,8 +2081,17 @@ public class MainActivity extends AppCompatActivity {
         binding.tvDetailMeta.setText(getString(R.string.mine_record_type_format, record.getType()));
         binding.tvDetailDeadline.setText(getString(R.string.task_detail_deadline_format, record.getDeadline()));
         binding.tvDetailDescription.setText(record.getDescription());
-        binding.ivDetailProof.setVisibility(View.GONE);
-        binding.ivDetailProof.setImageDrawable(null);
+        if (TextUtils.isEmpty(record.getTaskImageUrl())) {
+            binding.ivDetailProof.setVisibility(View.GONE);
+            binding.ivDetailProof.setImageDrawable(null);
+        } else {
+            binding.ivDetailProof.setVisibility(View.VISIBLE);
+            Glide.with(this)
+                    .load(record.getTaskImageUrl())
+                    .placeholder(R.drawable.ic_avatar_placeholder)
+                    .error(R.drawable.ic_avatar_placeholder)
+                    .into(binding.ivDetailProof);
+        }
 
         boolean canCancel = QUERY_PUBLISHED.equals(currentMineQuery) && MINE_STATUS_ALL.equals(currentMineStatusFilter) && "已发布".equals(record.getType());
         binding.btnAcceptTask.setText(canCancel ? "取消发布" : "关闭操作");
@@ -2176,6 +2340,16 @@ public class MainActivity extends AppCompatActivity {
         isSubmittingProof = false;
         binding.btnSecondaryAction.setVisibility(View.GONE);
         binding.detailOverlay.setVisibility(View.GONE);
+    }
+
+    private void resetPublishState() {
+        pendingPublishImageFile = null;
+        isPublishingTask = false;
+        if (binding != null) {
+            renderPublishImagePreview();
+            binding.btnConfirmPublish.setEnabled(true);
+            binding.btnConfirmPublish.setText("确认发布");
+        }
     }
 
     private void clearDashboardLists() {

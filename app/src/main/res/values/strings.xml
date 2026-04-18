@@ -1,5 +1,12 @@
 <resources>
     <string name="app_name">任务漂流瓶</string>
+    <string-array name="publish_task_types">
+        <item>校园</item>
+        <item>跑腿</item>
+        <item>学习</item>
+        <item>生活</item>
+        <item>其他</item>
+    </string-array>
     <string name="login_title">欢迎回来</string>
     <string name="register_title">创建你的漂流瓶账号</string>
     <string name="login_subtitle">当前版本已切换为 Spring Boot 后端登录</string>

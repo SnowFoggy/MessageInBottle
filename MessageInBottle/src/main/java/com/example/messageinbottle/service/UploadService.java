@@ -37,6 +37,12 @@ public class UploadService {
         return uploadToQiniu(file, key, "任务凭证上传失败");
     }
 
+    public String uploadTaskImage(MultipartFile file, Long userId) {
+        validateFile(file, "请上传任务图片");
+        String key = buildTaskImageKey(userId, file.getOriginalFilename());
+        return uploadToQiniu(file, key, "任务图片上传失败");
+    }
+
     public String uploadUserAvatar(MultipartFile file, Long userId) {
         validateFile(file, "请上传头像图片");
         String key = buildAvatarKey(userId, file.getOriginalFilename());
@@ -85,6 +91,10 @@ public class UploadService {
 
     private String buildTaskProofKey(Long taskId, Long userId, String originalFilename) {
         return "task-proof/" + userId + "/" + taskId + "-" + UUID.randomUUID() + extractExtension(originalFilename);
+    }
+
+    private String buildTaskImageKey(Long userId, String originalFilename) {
+        return "task-image/" + userId + "/image-" + UUID.randomUUID() + extractExtension(originalFilename);
     }
 
     private String buildAvatarKey(Long userId, String originalFilename) {

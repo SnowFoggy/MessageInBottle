@@ -8,16 +8,18 @@ public class PublishedTaskResponse {
     private Double amount;
     private String deadline;
     private String progress;
+    private String taskImageUrl;
     private String completionProofUrl;
 
     public PublishedTaskResponse(Long id, String title, String description, Double amount, String deadline, String progress,
-                                 String completionProofUrl) {
+                                 String taskImageUrl, String completionProofUrl) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.amount = amount;
         this.deadline = deadline;
         this.progress = progress;
+        this.taskImageUrl = taskImageUrl;
         this.completionProofUrl = completionProofUrl;
     }
 
@@ -43,6 +45,10 @@ public class PublishedTaskResponse {
 
     public String getProgress() {
         return progress;
+    }
+
+    public String getTaskImageUrl() {
+        return taskImageUrl;
     }
 
     public String getCompletionProofUrl() {

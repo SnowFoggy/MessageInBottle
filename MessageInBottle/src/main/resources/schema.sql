@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     description VARCHAR(1000) NOT NULL,
     amount DOUBLE NOT NULL,
     deadline VARCHAR(64) NOT NULL,
+    task_image_url VARCHAR(500) NULL,
     publisher_id BIGINT NOT NULL,
     publisher_name VARCHAR(64) NOT NULL,
     publish_time_text VARCHAR(32) NOT NULL,
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     accepter_id BIGINT NULL,
     review_status VARCHAR(32) NULL,
     completed BIT NOT NULL,
+    completion_proof_url VARCHAR(500) NULL,
     created_at BIGINT NOT NULL
 );
 

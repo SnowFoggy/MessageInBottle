@@ -35,4 +35,15 @@
     <color name="notification_badge">#FFE85D3F</color>
     <color name="notification_title">#FF2E2116</color>
     <color name="notification_body">#FF6A5849</color>
+    <color name="publish_panel_surface">#FFF7EFE2</color>
+    <color name="publish_panel_stroke">#265B3B1D</color>
+    <color name="publish_panel_title">#FF2E2116</color>
+    <color name="publish_panel_subtitle">#FF6A5849</color>
+    <color name="publish_input_surface">#FFFFFBF6</color>
+    <color name="publish_input_text">#FF2F241B</color>
+    <color name="publish_input_hint">#FF9A826F</color>
+    <color name="publish_section_surface">#FFF3E2CE</color>
+    <color name="publish_section_stroke">#2E9A5B2A</color>
+    <color name="publish_section_title">#FF8F4F20</color>
+    <color name="publish_secondary_button">#FF7A5C43</color>
 </resources>

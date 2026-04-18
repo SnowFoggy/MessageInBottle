@@ -52,6 +52,13 @@ public class TaskController {
         return ApiResponse.success("发布成功", taskService.publishTask(request));
     }
 
+    @PostMapping(value = "/tasks/publish/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<UploadResponse> uploadTaskImage(@RequestParam("userId") Long userId,
+                                                       @RequestPart("taskImage") MultipartFile taskImage) {
+        String fileUrl = uploadService.uploadTaskImage(taskImage, userId);
+        return ApiResponse.success("上传成功", new UploadResponse(fileUrl, "任务图片上传成功"));
+    }
+
     @PostMapping("/tasks/{taskId}/accept")
     public ApiResponse<AcceptedTaskResponse> acceptTask(@PathVariable Long taskId, @Valid @RequestBody AcceptTaskRequest request) {
         return ApiResponse.success("接取成功", taskService.acceptTask(taskId, request.getUserId()));

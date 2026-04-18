@@ -51,6 +51,9 @@ public class Task {
     private Boolean completed;
 
     @Column(length = 500)
+    private String taskImageUrl;
+
+    @Column(length = 500)
     private String completionProofUrl;
 
     @Column(nullable = false)
@@ -158,6 +161,14 @@ public class Task {
 
     public void setCompleted(Boolean completed) {
         this.completed = completed;
+    }
+
+    public String getTaskImageUrl() {
+        return taskImageUrl;
+    }
+
+    public void setTaskImageUrl(String taskImageUrl) {
+        this.taskImageUrl = taskImageUrl;
     }
 
     public String getCompletionProofUrl() {

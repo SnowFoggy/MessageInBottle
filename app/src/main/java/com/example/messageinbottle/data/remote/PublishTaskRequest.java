@@ -8,17 +8,17 @@ public class PublishTaskRequest {
     private final String description;
     private final double amount;
     private final String deadline;
+    private final String imageUrl;
 
-    public PublishTaskRequest(long userId, String title, String category, String description, double amount, String deadline) {
+    public PublishTaskRequest(long userId, String title, String category, String description, double amount, String deadline,
+                              String imageUrl) {
         this.userId = userId;
         this.title = title;
         this.category = category;
         this.description = description;
         this.amount = amount;
         this.deadline = deadline;
+        this.imageUrl = imageUrl;
     }
 }
-
-
-
 

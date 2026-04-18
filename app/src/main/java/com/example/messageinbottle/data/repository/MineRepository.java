@@ -54,12 +54,32 @@ public class MineRepository {
     public void ensureWalletSeed(long userId) {
     }
 
-    public ActionResult publishTask(long userId, String title, String description, double amount, String deadline) {
+    public ActionResult publishTask(long userId, String title, String description, double amount, String deadline,
+                                    String category, java.io.File imageFile) {
         try {
             return request(() -> {
+                String imageUrl = null;
+                if (imageFile != null) {
+                    java.util.Map<String, String> formData = new java.util.HashMap<>();
+                    formData.put("userId", String.valueOf(userId));
+                    String uploadJson = NetworkClient.getInstance().postMultipart(
+                            "/api/tasks/publish/image",
+                            formData,
+                            "taskImage",
+                            imageFile,
+                            "image/jpeg"
+                    );
+                    java.lang.reflect.Type uploadType = new TypeToken<ApiResponse<ImageUploadResponse>>() { }.getType();
+                    ApiResponse<ImageUploadResponse> uploadResponse = NetworkClient.getInstance().gson().fromJson(uploadJson, uploadType);
+                    if (uploadResponse == null || !uploadResponse.isSuccess() || uploadResponse.getData() == null) {
+                        return new ActionResult(false, uploadResponse == null ? "任务图片上传失败" : uploadResponse.getMessage());
+                    }
+                    imageUrl = uploadResponse.getData().getFileUrl();
+                }
+
                 String json = NetworkClient.getInstance().post(
                         "/api/tasks/publish",
-                        new PublishTaskRequest(userId, title, "校园", description, amount, deadline)
+                        new PublishTaskRequest(userId, title, category, description, amount, deadline, imageUrl)
                 );
                 java.lang.reflect.Type type = new TypeToken<ApiResponse<Object>>() { }.getType();
                 ApiResponse<Object> response = NetworkClient.getInstance().gson().fromJson(json, type);
@@ -123,6 +143,7 @@ public class MineRepository {
                     task.getAmount(),
                     task.getDeadline(),
                     task.getProgress(),
+                    task.getTaskImageUrl(),
                     task.getCompletionProofUrl()
             ));
         }

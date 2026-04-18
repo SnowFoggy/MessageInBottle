@@ -17,6 +17,7 @@ public class PublishTaskRequest {
     private Double amount;
     @NotBlank
     private String deadline;
+    private String imageUrl;
 
     public Long getUserId() {
         return userId;
@@ -64,6 +65,14 @@ public class PublishTaskRequest {
 
     public void setDeadline(String deadline) {
         this.deadline = deadline;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 }
 

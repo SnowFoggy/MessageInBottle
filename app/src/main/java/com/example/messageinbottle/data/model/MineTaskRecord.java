@@ -8,16 +8,18 @@ public class MineTaskRecord {
     private final double amount;
     private final String deadline;
     private final String type;
+    private final String taskImageUrl;
     private final String completionProofUrl;
 
     public MineTaskRecord(long id, String title, String description, double amount, String deadline, String type,
-                          String completionProofUrl) {
+                          String taskImageUrl, String completionProofUrl) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.amount = amount;
         this.deadline = deadline;
         this.type = type;
+        this.taskImageUrl = taskImageUrl;
         this.completionProofUrl = completionProofUrl;
     }
 
@@ -43,6 +45,10 @@ public class MineTaskRecord {
 
     public String getType() {
         return type;
+    }
+
+    public String getTaskImageUrl() {
+        return taskImageUrl;
     }
 
     public String getCompletionProofUrl() {

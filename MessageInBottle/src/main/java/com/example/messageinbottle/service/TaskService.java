@@ -83,6 +83,7 @@ public class TaskService {
         task.setStatus("OPEN");
         task.setReviewStatus("进行中");
         task.setCompleted(false);
+        task.setTaskImageUrl(request.getImageUrl());
         task.setCompletionProofUrl(null);
         task.setCreatedAt(now);
         task = taskRepository.save(task);
@@ -421,7 +422,8 @@ public class TaskService {
                 task.getDescription(),
                 task.getDeadline(),
                 task.getPublisherId(),
-                task.getPublisherName()
+                task.getPublisherName(),
+                task.getTaskImageUrl()
         );
     }
 
@@ -445,6 +447,7 @@ public class TaskService {
                 task.getAmount(),
                 task.getDeadline(),
                 mapProgress(task),
+                task.getTaskImageUrl(),
                 task.getCompletionProofUrl()
         );
     }
